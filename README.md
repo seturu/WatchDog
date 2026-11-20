@@ -11,6 +11,10 @@
 </p>
 
 <p align="center">
+  <a href="https://watchdog.seturu.com"><b>watchdog.seturu.com</b></a>
+</p>
+
+<p align="center">
   <img alt="macOS 26 Tahoe" src="https://img.shields.io/badge/macOS-26%20Tahoe-000000?logo=apple&logoColor=white">
   <img alt="Swift and SwiftUI" src="https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white">
   <img alt="On-device only" src="https://img.shields.io/badge/data-stays%20on%20your%20Mac-5856D6">
