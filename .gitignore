@@ -5,3 +5,5 @@ build-armed/
 .DS_Store
 # Your own signing settings (team ID). Copy Config/Local.example.xcconfig.
 Config/Local.xcconfig
+# Browsable HTML mockups of every screen, kept locally and not published.
+docs/mockups/
