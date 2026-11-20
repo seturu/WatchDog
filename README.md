@@ -227,36 +227,42 @@ In short, a determined you can get out with a password and a terminal. The easy,
 
 ## Install
 
-There's no notarized download yet, so WatchDog is built from source. A free Apple ID (Personal Team) is enough.
+There's no download yet, so WatchDog is built from source on your own Mac. A free Apple ID is enough; no paid developer account is needed.
 
-**Requirements:** macOS 26 Tahoe · Xcode with the macOS 26 SDK · [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) · an Apple ID added in Xcode → Settings → Accounts.
+**Requirements:** macOS 26 Tahoe · Xcode with the macOS 26 SDK, opened once · your Apple ID added in Xcode → Settings → Apple Accounts · [XcodeGen](https://github.com/yonaskolb/XcodeGen) (the build script offers to install it with Homebrew).
 
-Copy [`Config/Local.example.xcconfig`](Config/Local.example.xcconfig) to `Config/Local.xcconfig` and set **your** team ID there (`DEVELOPMENT_TEAM = …`). That file is ignored by git; Xcode and the installer both read it. The app and the daemon only trust peers signed by that team.
+### Quick start
 
 ```bash
-cp Config/Local.example.xcconfig Config/Local.xcconfig
+git clone https://github.com/seturu/WatchDog.git
 ```
+
+```bash
+cd WatchDog
+```
+
+```bash
+scripts/build.sh
+```
+
+The script checks Xcode and XcodeGen, finds your team ID (from your Apple Development certificate or the accounts in Xcode) and saves it in `Config/Local.xcconfig`, generates the Xcode project, and builds the development build. It prints the path of the app and how to start it; it doesn't install or start anything itself.
+
+The team ID matters because the app and the daemon only trust code signed by the same team. `Config/Local.xcconfig` is ignored by git, and both Xcode and the installer read it. To set it by hand instead, copy [`Config/Local.example.xcconfig`](Config/Local.example.xcconfig) to `Config/Local.xcconfig` and fill in `DEVELOPMENT_TEAM`.
 
 ### Step 1: try the development build (safe)
 
 The Debug build has its own identity (`local.watchdog.dev`) and hard safety caps: blocks of **5 minutes at most**, only `example.com` / `.org` / `.net` can be blocked, loosening waits 2 minutes, and the daemon resets itself every 15 minutes.
 
-```bash
-xcodegen generate
-```
+`scripts/build.sh` builds it. Start the app it prints, then open **Setup** in the sidebar and work down the list.
 
-```bash
-open WatchDog.xcodeproj
-```
-
-Build and run the **WatchDog** scheme, then open **Setup** in the sidebar and work down the list.
+Prefer Xcode? Run `xcodegen generate`, open `WatchDog.xcodeproj`, and build and run the **WatchDog** scheme.
 
 ### Step 2: the armed build
 
 The Release build is the real thing: 4-hour blocks, any site except the never-block list, a 2-hour cooling-off period, and no self-reset. **Print [`docs/RESCUE.md`](docs/RESCUE.md) first.**
 
 ```bash
-scripts/build-armed.sh
+scripts/build.sh --armed
 ```
 
 ```bash
@@ -338,4 +344,8 @@ Copyright © 2026 Luis Alonso.
 <p align="center">
   Built by someone with ADHD, for anyone who needs a little help holding the line.<br>
   If it gets you one more good hour, it did its job.
+</p>
+
+<p align="center">
+  <sub>A project by <a href="https://seturu.com">seturu.com</a></sub>
 </p>
