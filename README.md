@@ -347,5 +347,16 @@ Copyright © 2026 Luis Alonso.
 </p>
 
 <p align="center">
+  <sub>
+    Thank you to the people whose work WatchDog is built on:
+    <a href="https://github.com/groue/GRDB.swift">GRDB.swift</a> by <a href="https://github.com/groue">Gwendal Roué</a>,
+    <a href="https://www.zetetic.net/sqlcipher/">SQLCipher</a> by <a href="https://www.zetetic.net/">Zetetic</a>,
+    <a href="https://sqlite.org/">SQLite</a> by D. Richard Hipp and the SQLite developers,
+    and <a href="https://github.com/yonaskolb/XcodeGen">XcodeGen</a> by <a href="https://github.com/yonaskolb">Yonas Kolb</a>.
+    Their licenses are in <a href="THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</a>.
+  </sub>
+</p>
+
+<p align="center">
   <sub>A project by <a href="https://seturu.com">seturu.com</a></sub>
 </p>

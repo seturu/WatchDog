@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WatchDog: a focus enforcer for macOS</title>
+<meta name="description" content="WatchDog is a free, open-source focus enforcer for macOS. Rules you can read, breaks you earn with focus, and a root daemon that makes stop mean stop.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0f" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="WatchDog: holds the line when you can't">
+<meta property="og:description" content="A free, open-source focus enforcer for macOS.">
+<link rel="icon" href="images/icon.png">
+<style>
+/*
+  WatchDog project page. One static file: no build step, no fonts or scripts
+  from other servers (a privacy tool should not hand its visitors to a CDN).
+
+  Tokens
+  - One accent: Apple's indigo, the app icon's colour.
+  - Shapes: surfaces (tiles, figures, the command panel) use --r-surface;
+    everything you can press is a full pill. Nothing else gets a radius.
+*/
+:root {
+  --bg: #f6f6f8;
+  --bg-raised: #ffffff;
+  --ink: #17171c;
+  --ink-2: #4a4a55;
+  --ink-3: #686874;
+  --line: rgb(23 23 28 / .09);
+  --line-strong: rgb(23 23 28 / .18);
+  --accent: #5856d6;
+  --accent-ink: #ffffff;
+  --accent-soft: rgb(88 86 214 / .08);
+  --accent-rgb: 88 86 214;
+  --ink-rgb: 23 23 28;
+  --shadow: 0 1px 2px rgb(40 38 90 / .06), 0 12px 40px -12px rgb(40 38 90 / .14);
+  --r-surface: 22px;
+  --wrap: 1180px;
+  --gutter: clamp(20px, 5vw, 48px);
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0b0f;
+    --bg-raised: #15151b;
+    --ink: #ececf1;
+    --ink-2: #ababb8;
+    --ink-3: #8e8e9b;
+    --line: rgb(236 236 241 / .09);
+    --line-strong: rgb(236 236 241 / .2);
+    --accent: #7d7aff;
+    --accent-ink: #0b0b0f;
+    --accent-soft: rgb(125 122 255 / .1);
+    --accent-rgb: 125 122 255;
+    --ink-rgb: 236 236 241;
+    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 16px 48px -16px rgb(0 0 0 / .6);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 80px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 17px/1.55 var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+img { max-width: 100%; height: auto; display: block; }
+a { color: inherit; }
+::selection { background: rgb(var(--accent-rgb) / .22); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+.wrap { width: 100%; max-width: calc(var(--wrap) + var(--gutter) * 2); margin-inline: auto; padding-inline: var(--gutter); }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; color: var(--ink); }
+h2 { font-size: clamp(2rem, 3.6vw, 3rem); line-height: 1.08; letter-spacing: -.032em; font-weight: 650; text-wrap: balance; }
+h3 { font-size: 1.25rem; line-height: 1.25; letter-spacing: -.015em; font-weight: 620; }
+p { margin: 0; }
+.lede { color: var(--ink-2); font-size: clamp(1.06rem, 1.3vw, 1.2rem); line-height: 1.55; max-width: 60ch; text-wrap: pretty; }
+section { padding-block: clamp(88px, 12vw, 160px); }
+
+/* Buttons: one pill shape, two weights. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 48px; padding-inline: 24px; border-radius: 999px;
+  font: 600 1rem/1 var(--font); text-decoration: none; white-space: nowrap;
+  transition: transform .2s var(--ease), background-color .2s, border-color .2s, color .2s;
+}
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--ink)); }
+.btn-quiet { border: 1px solid var(--line-strong); color: var(--ink); }
+.btn-quiet:hover { border-color: var(--ink-3); }
+
+/* Navigation */
+.nav {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  border-bottom: 1px solid var(--line);
+}
+.nav .wrap { height: 64px; display: flex; align-items: center; gap: 28px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650; letter-spacing: -.01em; margin-right: auto; }
+.brand img { width: 28px; height: 28px; }
+.nav a:not(.brand) { text-decoration: none; color: var(--ink-2); font-size: .95rem; transition: color .2s; }
+.nav a:not(.brand):hover { color: var(--ink); }
+@media (max-width: 640px) { .nav .hide-sm { display: none; } .nav .wrap { gap: 20px; } }
+
+/* Hero: the copy on the left, the field on the right. */
+.hero { padding-block: clamp(32px, 6vh, 72px) clamp(56px, 8vh, 96px); }
+.hero .wrap {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  align-items: center; gap: clamp(24px, 5vw, 72px);
+  min-height: min(calc(100dvh - 64px - 128px), 720px);
+}
+.eyebrow { font-size: .9rem; font-weight: 600; color: var(--accent); margin-bottom: 20px; letter-spacing: .01em; }
+.hero h1 { font-size: clamp(2.7rem, 5.6vw, 4.6rem); line-height: 1.02; letter-spacing: -.045em; font-weight: 700; text-wrap: balance; }
+.hero .lede { margin-top: 24px; max-width: 30em; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
+.field { position: relative; width: 100%; aspect-ratio: 1 / .9; }
+.field canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: pan-y; }
+@media (max-width: 860px) {
+  .hero .wrap { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .field { aspect-ratio: 4 / 3; margin-top: 8px; }
+}
+
+/* The promise: words that arrive scattered and settle into a sentence. */
+.promise { text-align: center; overflow: clip; border-top: 1px solid var(--line); }
+.promise-line {
+  font-family: var(--font-display); font-weight: 650;
+  font-size: clamp(2rem, 4.8vw, 4rem); line-height: 1.12; letter-spacing: -.035em;
+  max-width: 17em; margin-inline: auto; text-wrap: balance;
+}
+.promise-line em { font-style: normal; color: var(--accent); }
+.promise .lede { margin: 32px auto 0; }
+.scatter .w {
+  display: inline-block;
+  transition:
+    transform 1.3s var(--ease) calc(var(--i) * 55ms),
+    opacity 1s ease calc(var(--i) * 55ms),
+    filter 1s ease calc(var(--i) * 55ms);
+}
+.scatter:not(.is-ordered) .w { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: .22; filter: blur(1.5px); }
+
+/* Features: a bento of five, with the app's own screens. */
+.features h2 { max-width: 14em; }
+.bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
+.tile {
+  grid-column: span 6; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-raised); border: 1px solid var(--line); border-radius: var(--r-surface); box-shadow: var(--shadow);
+}
+.tile-copy { padding: 32px 32px 8px; }
+.tile-copy p { color: var(--ink-2); margin-top: 10px; max-width: 42ch; }
+.tile figure { margin: auto 0 0; padding: 16px 12px 0; }
+.tile figure img { width: 100%; }
+/* Spans chosen so each row's two screenshots end at about the same height. */
+.t-rules { grid-column: span 6; }
+.t-earn { grid-column: span 6; }
+.t-menu { grid-column: span 4; }
+.t-widgets { grid-column: span 8; }
+.t-widgets figure { padding: 24px 24px 28px; }
+.t-clock {
+  grid-column: span 12; flex-direction: row; align-items: center; gap: 48px;
+  background: var(--accent-soft); border-color: rgb(var(--accent-rgb) / .16); box-shadow: none;
+  padding: 40px 48px;
+}
+.t-clock h3 { font-size: clamp(1.6rem, 2.6vw, 2.2rem); letter-spacing: -.03em; flex: 0 0 auto; }
+.t-clock p { color: var(--ink-2); max-width: 52ch; }
+@media (max-width: 860px) {
+  .bento > * { grid-column: 1 / -1 !important; }
+  .tile-copy { padding: 26px 24px 6px; }
+  .t-clock { flex-direction: column; align-items: flex-start; gap: 12px; padding: 28px 24px; }
+}
+
+/* How it works: the diagram, then the two halves side by side. */
+.how .lede { margin-top: 20px; }
+.diagram { margin: 56px 0 0; border-radius: var(--r-surface); overflow: hidden; }
+.halves { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 5vw, 72px); margin-top: 48px; }
+.half h3 { display: flex; align-items: baseline; gap: 10px; }
+.half h3 span { font: 500 .85rem/1 var(--mono); color: var(--ink-3); }
+.half ul { list-style: none; margin: 18px 0 0; padding: 0; }
+.half li { color: var(--ink-2); padding: 12px 0; border-top: 1px solid var(--line); }
+.privacy { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--line); color: var(--ink-2); max-width: 70ch; }
+.privacy strong { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { .halves { grid-template-columns: minmax(0, 1fr); } }
+
+/* Honest: the limits, said plainly. */
+.honest { border-top: 1px solid var(--line); }
+.honest .lede + .lede { margin-top: 16px; }
+.honest .actions { margin-top: 28px; }
+.honest figure { margin: 56px 0 0; }
+.honest figcaption { color: var(--ink-3); font-size: .95rem; margin-top: 14px; }
+
+/* Install: the words on the left, the commands on the right. */
+.install .wrap { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(32px, 6vw, 88px); align-items: start; }
+.install .lede { margin-top: 20px; }
+.install .note { color: var(--ink-3); font-size: .95rem; margin-top: 20px; max-width: 52ch; }
+.install code { font-family: var(--mono); font-size: .92em; white-space: nowrap; }
+.commands {
+  background: var(--bg-raised); border: 1px solid var(--line); border-radius: var(--r-surface);
+  box-shadow: var(--shadow); padding: 8px; margin: 0;
+}
+.cmd { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 18px; }
+.cmd + .cmd { border-top: 1px solid var(--line); }
+.cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: .95rem; color: var(--ink); padding-block: 6px; scrollbar-width: thin; }
+.cmd code::before { content: "$ "; color: var(--ink-3); }
+.copy {
+  flex: 0 0 auto; height: 34px; min-width: 78px; padding-inline: 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--ink-2);
+  font: 600 .85rem/1 var(--font); transition: transform .2s var(--ease), color .2s, border-color .2s, background-color .2s;
+}
+.copy:hover { color: var(--ink); border-color: var(--ink-3); }
+.copy:active { transform: scale(.97); }
+.copy.done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.after { margin-top: 24px; color: var(--ink-2); }
+@media (max-width: 860px) { .install .wrap { grid-template-columns: minmax(0, 1fr); } }
+
+/* Footer */
+footer { border-top: 1px solid var(--line); padding-block: 64px 56px; }
+footer .wrap { display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: end; }
+footer .sign { font-family: var(--font-display); font-size: clamp(1.3rem, 2.2vw, 1.7rem); line-height: 1.3; letter-spacing: -.02em; font-weight: 600; max-width: 26em; text-wrap: balance; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: flex-end; }
+footer nav a { color: var(--ink-2); text-decoration: none; }
+footer nav a:hover { color: var(--ink); }
+footer .thanks { grid-column: 1 / -1; color: var(--ink-2); font-size: .95rem; line-height: 1.6; max-width: 72ch; padding-top: 28px; border-top: 1px solid var(--line); }
+footer .thanks a { color: var(--ink); text-decoration: underline; text-decoration-color: rgb(var(--accent-rgb) / .45); text-underline-offset: 3px; transition: text-decoration-color .2s; }
+footer .thanks a:hover { text-decoration-color: var(--accent); }
+footer small { grid-column: 1 / -1; color: var(--ink-3); font-size: .9rem; }
+@media (max-width: 760px) { footer .wrap { grid-template-columns: minmax(0, 1fr); } footer nav { justify-content: flex-start; } }
+
+/* Reveal on entry. Only when scripts run and motion is welcome. */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal] { transition: opacity .9s ease var(--d, 0s), transform 1s var(--ease) var(--d, 0s); }
+  .js [data-reveal]:not(.in) { opacity: 0; transform: translateY(22px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .scatter .w { transform: none !important; opacity: 1 !important; filter: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="WatchDog, back to top"><img src="images/icon.png" alt="" width="28" height="28">WatchDog</a>
+    <a class="hide-sm" href="#how">How it works</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/seturu/WatchDog">View on GitHub</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Free and open source, for macOS</p>
+        <h1>Holds the line when you can't.</h1>
+        <p class="lede">Rules you can read, breaks you earn with focus, and a root daemon that makes stop mean stop.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#install">Build it</a>
+          <a class="btn btn-quiet" href="https://github.com/seturu/WatchDog">View on GitHub</a>
+        </div>
+      </div>
+      <div class="field">
+        <canvas role="img" aria-label="Scattered grey squares drift, then settle into an even grid: indigo focus blocks with small breaks between them, in a pomodoro rhythm."></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="promise">
+    <div class="wrap">
+      <p class="promise-line" data-scatter>Decide while you're thinking clearly. <em>WatchDog keeps to it</em> when you aren't.</p>
+      <p class="lede" data-reveal>Everything starts in dry run: rules only notify, so you can tune them for a few days before anything bites.</p>
+    </div>
+  </section>
+
+  <section class="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <h2 id="features-title" data-reveal>More friction. More incentive.</h2>
+      <div class="bento">
+        <article class="tile t-rules" data-reveal>
+          <div class="tile-copy">
+            <h3>Rules you can read</h3>
+            <p>Every rule is one plain sentence. Match sites, apps or window titles, all day or on a schedule, then warn, close or block.</p>
+          </div>
+          <figure>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="images/rules-dark.png">
+              <img src="images/rules-light.png" width="2240" height="1800" loading="lazy" decoding="async" alt="The Rules screen: a list of rules with on and off switches, and an editor that states the selected rule as a sentence, with its break budget, sites and schedule.">
+            </picture>
+          </figure>
+        </article>
+
+        <article class="tile t-earn" data-reveal style="--d:.08s">
+          <div class="tile-copy">
+            <h3>Earn your distractions</h3>
+            <p>With a “Pomodoro it” rule, YouTube is for breaks. Each hour of focus earns 18 minutes, and the budget starts at zero each day.</p>
+          </div>
+          <figure>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="images/focus-dark.png">
+              <img src="images/focus-light.png" width="2240" height="1540" loading="lazy" decoding="async" alt="The Focus screen: a countdown ring, session 2 of 4, a category picker, Pause, Skip and Stop buttons, and the day's rated sessions.">
+            </picture>
+          </figure>
+        </article>
+
+        <article class="tile t-menu" data-reveal>
+          <div class="tile-copy">
+            <h3>One click away</h3>
+            <p>The menu bar shows the number that matters right now: focus time left, or break budget left.</p>
+          </div>
+          <figure>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="images/popover-dark.png">
+              <img src="images/popover-light.png" width="1280" height="940" loading="lazy" decoding="async" alt="The menu bar popover: a running block, the focus countdown with Pause, Skip and Stop, the break budget, and today's totals.">
+            </picture>
+          </figure>
+        </article>
+
+        <article class="tile t-widgets" data-reveal style="--d:.08s">
+          <div class="tile-copy">
+            <h3>On your desktop</h3>
+            <p>Focus &amp; Breaks and Pomodoro widgets. They see totals and the timer, never window titles, addresses or apps.</p>
+          </div>
+          <figure>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="images/widgets-dark.png">
+              <img src="images/widgets-light.png" width="2148" height="600" loading="lazy" decoding="async" alt="Three desktop widgets: Focus and Breaks, Pomodoro with a countdown ring and buttons, and a small Pomodoro widget during a break.">
+            </picture>
+          </figure>
+        </article>
+
+        <article class="tile t-clock" data-reveal>
+          <h3>Time you can't fake</h3>
+          <p>Blocks count down on a clock that keeps running through sleep and ignores the system date. A restart can make a block a few seconds longer, never shorter.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <h2 id="how-title" data-reveal>Two processes, split by trust.</h2>
+      <p class="lede" data-reveal>A root daemon can't see your windows, and an app can't be trusted to keep a promise. So the app observes and decides, and the daemon enforces and remembers.</p>
+      <figure class="diagram" data-reveal>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="images/arch-dark.png">
+          <img src="images/arch-light.png" width="2400" height="1360" loading="lazy" decoding="async" alt="Architecture: WatchDog.app in your login session (tracker, rule engine, gentle enforcement, pomodoro timer, usage history) talks over signed, owner-only XPC to WatchDogDaemon running as root (rules and the Enforcing switch, block timer, watching the app, audit log), which keeps /etc/hosts, an optional firewall anchor and a Brave policy in line.">
+        </picture>
+      </figure>
+      <div class="halves">
+        <div class="half" data-reveal>
+          <h3>WatchDog.app <span>as you</span></h3>
+          <ul>
+            <li>Notes the front app, window title and tab address every 2 seconds.</li>
+            <li>Checks your rules about every 4 seconds.</li>
+            <li>Keeps your history and the pomodoro timer.</li>
+          </ul>
+        </div>
+        <div class="half" data-reveal style="--d:.08s">
+          <h3>WatchDogDaemon <span>as root</span></h3>
+          <ul>
+            <li>Owns the rules, the Enforcing switch and every block.</li>
+            <li>Makes any loosening wait two hours while enforcing.</li>
+            <li>Blocks every site your rules name if the app goes quiet.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="privacy" data-reveal><strong>No account, no cloud, no telemetry.</strong> Your history stays on your Mac, readable only by your account, and stores the site you visited, not the full address.</p>
+    </div>
+  </section>
+
+  <section class="honest" aria-labelledby="honest-title">
+    <div class="wrap">
+      <h2 id="honest-title" data-reveal>Not a prison, on purpose.</h2>
+      <p class="lede" data-reveal style="margin-top:20px">With your administrator password and a terminal, WatchDog comes off in about a minute. A focus tool that could lock you out of your own Mac would be dangerous.</p>
+      <p class="lede" data-reveal>So there's an uninstaller, and a rescue sheet worth printing before you switch to Enforcing.</p>
+      <div class="actions" data-reveal>
+        <a class="btn btn-quiet" href="https://github.com/seturu/WatchDog/blob/main/docs/RESCUE.md">Read the rescue sheet</a>
+      </div>
+      <figure data-reveal>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="images/uninstall-dark.png">
+          <img src="images/uninstall-light.png" width="2400" height="800" loading="lazy" decoding="async" alt="Half uninstall versus full uninstall. Trashing the app or switching it off in Login Items leaves blocked sites blocked and root-owned files behind. A full uninstall means dry run first, letting blocks finish, then Settings, Uninstall WatchDog, or the uninstall script.">
+        </picture>
+        <figcaption>Uninstall from Settings or with the script. Trashing the app leaves blocks behind.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="install" id="install" aria-labelledby="install-title">
+    <div class="wrap">
+      <div data-reveal>
+        <h2 id="install-title">Build it on your Mac.</h2>
+        <p class="lede">There's no download yet. A free Apple ID in Xcode is enough; no paid developer account needed.</p>
+        <p class="note">Needs macOS 26 and Xcode with the macOS 26 SDK. The script finds your team ID and offers to install XcodeGen. WatchDog 0.1 is an early release that has so far run on one Mac.</p>
+      </div>
+      <div data-reveal style="--d:.1s">
+        <div class="commands" role="group" aria-label="Build commands">
+          <div class="cmd"><code>git clone https://github.com/seturu/WatchDog.git</code><button class="copy" type="button">Copy</button></div>
+          <div class="cmd"><code>cd WatchDog</code><button class="copy" type="button">Copy</button></div>
+          <div class="cmd"><code>scripts/build.sh</code><button class="copy" type="button">Copy</button></div>
+        </div>
+        <p class="after">That builds the development build: blocks of 5 minutes at most, and only <code>example.com</code> can be blocked. When you trust it, print the rescue sheet and run <code>scripts/build.sh --armed</code>.</p>
+        <p class="sr-status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)"></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="sign">Built by someone with ADHD, for anyone who needs a little help holding the line.</p>
+    <nav aria-label="Footer">
+      <a href="https://github.com/seturu/WatchDog">View on GitHub</a>
+      <a href="https://github.com/seturu/WatchDog/blob/main/LICENSE">GPL-3.0 license</a>
+      <a href="https://seturu.com">seturu.com</a>
+    </nav>
+    <p class="thanks">Thank you to the people whose work WatchDog is built on: <a href="https://github.com/groue/GRDB.swift">GRDB.swift</a> by <a href="https://github.com/groue">Gwendal Roué</a>, <a href="https://www.zetetic.net/sqlcipher/">SQLCipher</a> by <a href="https://www.zetetic.net/">Zetetic</a>, <a href="https://sqlite.org/">SQLite</a> by D. Richard Hipp and the SQLite developers, and <a href="https://github.com/yonaskolb/XcodeGen">XcodeGen</a> by <a href="https://github.com/yonaskolb">Yonas Kolb</a>. Their licenses are in the <a href="https://github.com/seturu/WatchDog/blob/main/THIRD-PARTY-NOTICES.md">third-party notices</a>.</p>
+    <small>Copyright © 2026 Luis Alonso. Free software under the GNU General Public License v3.0 or later.</small>
+  </div>
+</footer>
+
+<script>
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  root.classList.add("js");
+  const reduceQuery = matchMedia("(prefers-reduced-motion: reduce)");
+  const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+
+  /* ---------- The field: chaos settling into a pomodoro rhythm ---------- */
+  const canvas = document.querySelector(".field canvas");
+  const ctx = canvas.getContext("2d");
+  const COLS = 8, ROWS = 6;
+  // Each row is a round: focus, break, focus, break, focus, break, focus, long break.
+  const RHYTHM = ["f", "b", "f", "b", "f", "b", "f", "l"];
+  const HOLD = 0.75, SETTLE = 1.7;   // seconds of pure chaos, then each cell's travel
+  let W = 0, H = 0, pitch = 0, cells = [], rgb = {}, start = performance.now();
+  let pointer = null, raf = 0, visible = true, lastDone = 0;
+
+  function seeded(seed) {
+    return () => {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  const triplet = name => getComputedStyle(root).getPropertyValue(name).trim().split(/\s+/).map(Number);
+  function readColors() { rgb = { accent: triplet("--accent-rgb"), ink: triplet("--ink-rgb") }; }
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const mix = (a, b, t) => a + (b - a) * t;
+
+  function build() {
+    const box = canvas.getBoundingClientRect();
+    if (!box.width || !box.height) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = box.width; H = box.height;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    pitch = Math.min((W * .9) / COLS, (H * .86) / ROWS);
+    const size = pitch * .72;
+    const x0 = (W - pitch * COLS) / 2 + pitch / 2, y0 = (H - pitch * ROWS) / 2 + pitch / 2;
+    const rand = seeded(19);
+    cells = [];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const kind = RHYTHM[c];
+        cells.push({
+          kind,
+          ox: x0 + c * pitch, oy: y0 + r * pitch,
+          size: kind === "f" ? size : kind === "l" ? size * .56 : size * .3,
+          cx: mix(-.04, 1.04, rand()) * W, cy: mix(-.04, 1.04, rand()) * H,
+          crot: (rand() - .5) * 1.7, csize: size * mix(.45, 1.25, rand()),
+          calpha: mix(.12, .5, rand()),
+          phase: rand() * Math.PI * 2, speed: mix(.35, .9, rand()), amp: mix(8, 26, rand()),
+          delay: (c * .06 + r * .05) + rand() * .18,
+          px: 0, py: 0, pr: 0, pm: 0
+        });
+      }
+    }
+    lastDone = Math.max(...cells.map(cell => cell.delay)) + SETTLE;
+  }
+
+  function draw(now) {
+    const reduce = reduceQuery.matches;
+    const t = (now - start) / 1000;
+    const travel = reduce ? Infinity : t - HOLD;
+    let busy = !reduce && travel < lastDone;
+    ctx.clearRect(0, 0, W, H);
+    for (const cell of cells) {
+      // The pointer stirs nearby cells back toward chaos; they spring home when it leaves.
+      let tx = 0, ty = 0, tr = 0, tm = 0;
+      if (pointer && !reduce) {
+        const dx = cell.ox - pointer.x, dy = cell.oy - pointer.y;
+        const dist = Math.hypot(dx, dy) || 1, reach = pitch * 2.4;
+        if (dist < reach) {
+          const f = Math.pow(1 - dist / reach, 2);
+          tx = dx / dist * f * pitch * 1.15; ty = dy / dist * f * pitch * 1.15;
+          tr = f * (cell.crot >= 0 ? .9 : -.9); tm = f;
+        }
+      }
+      cell.px += (tx - cell.px) * .14; cell.py += (ty - cell.py) * .14;
+      cell.pr += (tr - cell.pr) * .14; cell.pm += (tm - cell.pm) * .14;
+      if (Math.abs(cell.px) + Math.abs(cell.py) + Math.abs(cell.pm) > .02) busy = true;
+
+      const e = ease(clamp((travel - cell.delay) / SETTLE, 0, 1));
+      const drift = 1 - e;
+      const wob = t * cell.speed + cell.phase;
+      const x = mix(cell.cx + Math.sin(wob) * cell.amp * drift, cell.ox, e) + cell.px;
+      const y = mix(cell.cy + Math.cos(wob * .8) * cell.amp * .7 * drift, cell.oy, e) + cell.py;
+      const rot = mix(cell.crot + Math.sin(wob * .6) * .25 * drift, 0, e) + cell.pr;
+      const s = mix(cell.csize, cell.size, e);
+      const order = e * (1 - cell.pm * .85);
+      let color, alpha;
+      if (cell.kind === "f") {
+        color = rgb.ink.map((v, i) => Math.round(mix(v, rgb.accent[i], order)));
+        alpha = mix(cell.calpha, 1, order);
+      } else {
+        color = rgb.ink;
+        alpha = mix(cell.calpha, cell.kind === "l" ? .3 : .22, e);
+      }
+      ctx.save();
+      ctx.translate(x, y); ctx.rotate(rot);
+      ctx.fillStyle = `rgb(${color[0]} ${color[1]} ${color[2]} / ${alpha.toFixed(3)})`;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(-s / 2, -s / 2, s, s, s * .27); else ctx.rect(-s / 2, -s / 2, s, s);
+      ctx.fill();
+      ctx.restore();
+    }
+    return busy || !!pointer;
+  }
+
+  function frame(now) { raf = 0; if (draw(now) && visible) raf = requestAnimationFrame(frame); }
+  function kick() { if (!raf && visible) raf = requestAnimationFrame(frame); }
+
+  readColors(); build(); kick();
+  new ResizeObserver(() => { build(); kick(); }).observe(canvas);
+  new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; kick(); }).observe(canvas);
+  darkQuery.addEventListener("change", () => { readColors(); kick(); });
+  reduceQuery.addEventListener("change", kick);
+  canvas.addEventListener("pointermove", event => {
+    const box = canvas.getBoundingClientRect();
+    pointer = { x: event.clientX - box.left, y: event.clientY - box.top };
+    kick();
+  });
+  canvas.addEventListener("pointerleave", () => { pointer = null; kick(); });
+
+  /* ---------- The promise: scattered words find their places ---------- */
+  document.querySelectorAll("[data-scatter]").forEach(line => {
+    if (reduceQuery.matches) return;
+    const rand = seeded(7);
+    const spread = Math.min(1, innerWidth / 900);
+    let index = 0;
+    const split = node => {
+      for (const child of [...node.childNodes]) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const parts = child.textContent.split(/(\s+)/);
+          const frag = document.createDocumentFragment();
+          for (const part of parts) {
+            if (!part) continue;
+            if (/^\s+$/.test(part)) { frag.append(part); continue; }
+            const word = document.createElement("span");
+            word.className = "w";
+            word.textContent = part;
+            const sx = rand() < .5 ? -1 : 1, sy = rand() < .5 ? -1 : 1;
+            word.style.setProperty("--i", index++);
+            word.style.setProperty("--x", `${(sx * mix(40, 190, rand()) * spread).toFixed(0)}px`);
+            word.style.setProperty("--y", `${(sy * mix(30, 120, rand()) * spread).toFixed(0)}px`);
+            word.style.setProperty("--r", `${((rand() - .5) * 46).toFixed(1)}deg`);
+            frag.append(word);
+          }
+          child.replaceWith(frag);
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          split(child);
+        }
+      }
+    };
+    split(line);
+    line.classList.add("scatter");
+    new IntersectionObserver((entries, observer) => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        line.classList.add("is-ordered");
+        observer.disconnect();
+      }
+    }, { threshold: .6 }).observe(line);
+  });
+
+  /* ---------- Reveal sections as they arrive ---------- */
+  const revealer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) { entry.target.classList.add("in"); revealer.unobserve(entry.target); }
+    }
+  }, { rootMargin: "0px 0px -8% 0px", threshold: .12 });
+  document.querySelectorAll("[data-reveal]").forEach(el => revealer.observe(el));
+
+  /* ---------- Copy buttons ---------- */
+  const status = document.querySelector(".sr-status");
+  document.querySelectorAll(".copy").forEach(button => {
+    const code = button.previousElementSibling;
+    let timer = 0;
+    const show = (label, done) => {
+      button.textContent = label;
+      button.classList.toggle("done", done);
+      status.textContent = done ? "Copied to the clipboard." : "Select the command and press Command C.";
+      clearTimeout(timer);
+      timer = setTimeout(() => { button.textContent = "Copy"; button.classList.remove("done"); }, 1800);
+    };
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(code.textContent.trim());
+        show("Copied", true);
+      } catch {
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        const selection = getSelection();
+        selection.removeAllRanges(); selection.addRange(range);
+        show("Press ⌘C", false);
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

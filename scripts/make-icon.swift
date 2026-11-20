@@ -48,23 +48,46 @@ func drawIcon() -> NSBitmapImageRep {
         .draw(in: CGRect(x: body.minX, y: body.maxY - 220, width: body.width, height: 220), angle: -90)
     context.restoreGState()
 
-    // The eye, from SF Symbols, tinted white.
-    let config = NSImage.SymbolConfiguration(pointSize: 400, weight: .semibold)
-    let symbol = NSImage(systemSymbolName: "eye.fill", accessibilityDescription: nil)!
-        .withSymbolConfiguration(config)!
-    let tinted = NSImage(size: symbol.size, flipped: false) { rect in
-        symbol.draw(in: rect)
-        NSColor.white.set()
-        rect.fill(using: .sourceAtop)
-        return true
-    }
-    let width: CGFloat = 520
-    let height = width * symbol.size.height / symbol.size.width
-    let eyeRect = CGRect(x: (canvas - width) / 2, y: (canvas - height) / 2, width: width, height: height)
+    // The eye, drawn here from plain curves. (Not an SF Symbol: Apple's terms
+    // rule out SF Symbols, or anything confusingly similar, in app icons and
+    // logos.) An open lens, an iris that doubles as a timer ring with its last
+    // stretch still to run, and a pupil.
+    let eye = CGPoint(x: 512, y: 520)
+    // Strokes are thick enough to stay a crisp line at 16 x 16.
+    let half: CGFloat = 305, lift: CGFloat = 275
+    let lens = NSBezierPath()
+    lens.move(to: CGPoint(x: eye.x - half, y: eye.y))
+    lens.curve(to: CGPoint(x: eye.x + half, y: eye.y),
+               controlPoint1: CGPoint(x: eye.x - half * 0.48, y: eye.y + lift),
+               controlPoint2: CGPoint(x: eye.x + half * 0.48, y: eye.y + lift))
+    lens.curve(to: CGPoint(x: eye.x - half, y: eye.y),
+               controlPoint1: CGPoint(x: eye.x + half * 0.48, y: eye.y - lift),
+               controlPoint2: CGPoint(x: eye.x - half * 0.48, y: eye.y - lift))
+    lens.close()
+    lens.lineWidth = 80
+    lens.lineJoinStyle = .round
+
+    // From 12 o'clock, clockwise, five sixths of the way round.
+    let ring = NSBezierPath()
+    ring.appendArc(withCenter: eye, radius: 108, startAngle: 90, endAngle: -210, clockwise: true)
+    ring.lineWidth = 62
+    ring.lineCapStyle = .round
+
+    let pupilRadius: CGFloat = 46
+    let pupil = NSBezierPath(ovalIn: CGRect(x: eye.x - pupilRadius, y: eye.y - pupilRadius,
+                                            width: pupilRadius * 2, height: pupilRadius * 2))
+
     context.saveGState()
     context.setShadow(offset: CGSize(width: 0, height: -10), blur: 30,
                       color: NSColor.black.withAlphaComponent(0.45).cgColor)
-    tinted.draw(in: eyeRect)
+    // One transparency layer so the three parts cast a single shadow.
+    context.beginTransparencyLayer(auxiliaryInfo: nil)
+    NSColor.white.setStroke()
+    NSColor.white.setFill()
+    lens.stroke()
+    ring.stroke()
+    pupil.fill()
+    context.endTransparencyLayer()
     context.restoreGState()
 
     NSGraphicsContext.restoreGraphicsState()
