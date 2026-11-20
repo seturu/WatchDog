@@ -1,0 +1,7 @@
+build/
+build-armed/
+*.xcodeproj
+.build/
+.DS_Store
+# Your own signing settings (team ID). Copy Config/Local.example.xcconfig.
+Config/Local.xcconfig

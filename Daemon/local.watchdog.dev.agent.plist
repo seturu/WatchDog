@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- launchd job that runs the WatchDog app itself in your login session.
+     Registered from Settings ("Start at login and keep running"). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.watchdog.dev.agent</string>
+    <key>BundleProgram</key>
+    <string>Contents/MacOS/WatchDog</string>
+    <!-- Start when you log in. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- Start again if the app is killed or crashes, but not after a normal
+         quit (which the app only allows while it is not enforcing). -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <!-- Only in a graphical login session, as an app the user interacts with. -->
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+    <!-- Let a helper the app starts outlive it. Used once: when "start at
+         login" is switched off, the app reopens itself as an ordinary app. -->
+    <key>AbandonProcessGroup</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <key>AssociatedBundleIdentifiers</key>
+    <array>
+        <string>local.watchdog.dev</string>
+    </array>
+</dict>
+</plist>

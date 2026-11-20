@@ -1,0 +1,14 @@
+// Local signing for both targets. build-armed.sh --distribute selects Developer ID.
+//
+// Your own team ID does not go in this file. Copy Local.example.xcconfig to
+// Local.xcconfig (ignored by git) and set DEVELOPMENT_TEAM there; values in
+// Local.xcconfig override the ones below. For a personal build, use the free
+// "Personal Team" of the Apple ID added in Xcode > Settings > Apple Accounts.
+//
+// Apple Development certificates last a year. After renewing yours, expect to
+// re-approve the daemon in Login Items and re-grant Accessibility.
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

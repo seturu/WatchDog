@@ -1,0 +1,10 @@
+// Publisher identity for the downloadable build (build-armed.sh --distribute,
+// install-armed.sh --download). Self-builds use Signing.xcconfig and Local.xcconfig.
+//
+// Set DEVELOPMENT_TEAM to the publisher's Developer ID team and commit it:
+// people who install a download verify it against this value. It stays empty
+// while there is no Developer ID, and both scripts refuse to run until it is set.
+DEVELOPMENT_TEAM =
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Developer ID Application
+WD_DISTRIBUTION_SIGN_FLAGS = --timestamp

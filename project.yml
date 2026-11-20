@@ -1,0 +1,164 @@
+# XcodeGen spec. The .xcodeproj is generated from this file:
+#   xcodegen generate
+# Edit this file, not the project settings in Xcode (they get overwritten).
+name: WatchDog
+
+options:
+  bundleIdPrefix: local.watchdog
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+
+packages:
+  WatchDogCore:
+    path: Packages/WatchDogCore
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # Semantic Versioning. MARKETING_VERSION is what people see (plain
+    # MAJOR.MINOR.PATCH, no "-alpha": that label lives only in the git tag,
+    # e.g. v0.1.0-alpha.1). CURRENT_PROJECT_VERSION is the build number: a
+    # whole number that goes up with every release, pre-releases included.
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+  # Two complete identities. Debug is the development build; Release is the
+  # ARMED build (no safety caps, its own daemon, rules, history and names).
+  # The Swift side of this lives in Packages/WatchDogCore/.../Identifiers.swift.
+  configs:
+    Debug:
+      ENABLE_HARDENED_RUNTIME: NO
+      WD_ID: local.watchdog.dev
+    Release:
+      ENABLE_HARDENED_RUNTIME: YES
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+      OTHER_CODE_SIGN_FLAGS: "$(inherited) $(WD_DISTRIBUTION_SIGN_FLAGS)"
+      WD_ID: local.watchdog
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: ARMED
+
+targets:
+  # The GUI app. Also acts as the user-session agent (tracking + soft enforcement).
+  WatchDog:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+      # SMAppService only looks for daemon plists in Contents/Library/LaunchDaemons.
+      - path: Daemon/local.watchdog.dev.daemon.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchDaemons
+      # Same idea for the login agent: SMAppService looks in Contents/Library/LaunchAgents.
+      - path: Daemon/local.watchdog.dev.agent.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchAgents
+    dependencies:
+      - package: WatchDogCore
+      # The daemon binary ships inside the app at Contents/MacOS/WatchDogDaemon.
+      - target: WatchDogDaemon
+        embed: true
+        link: false
+        copy:
+          destination: executables
+      # The desktop and Notification Center widgets, in Contents/PlugIns.
+      - target: WatchDogWidgets
+        embed: true
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: WatchDog
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSUIElement: true # menu-bar app: no Dock icon
+        NSAppleEventsUsageDescription: WatchDog reads the current tab's address from your browser to tell work from distraction.
+        # The App Group shared with the widgets (WD.appGroupID). Must match the entitlements.
+        WDAppGroup: $(DEVELOPMENT_TEAM).$(WD_ID)
+        # The app-only App Group that holds usage history (WD.privateGroupID).
+        WDPrivateGroup: $(DEVELOPMENT_TEAM).$(WD_ID).private
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(WD_ID)
+        PRODUCT_NAME: WatchDog
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The App Group is macOS-style (team ID prefix): nothing to register.
+        REGISTER_APP_GROUPS: NO
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Config/WatchDog.Debug.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Config/WatchDog.Release.entitlements
+    # The launchd files in the repository carry the development names. For the
+    # armed build this step renames them inside the built app; for the
+    # development build it changes nothing. It runs before code signing.
+    postBuildScripts:
+      - name: Name launchd files for this build
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          [ "$WD_ID" = "local.watchdog.dev" ] && exit 0
+          for kind in LaunchDaemons LaunchAgents; do
+            dir="$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Library/$kind"
+            for file in "$dir"/local.watchdog.dev.*.plist; do
+              [ -e "$file" ] || continue
+              name=$(basename "$file" | sed "s/^local\.watchdog\.dev/$WD_ID/")
+              sed "s/local\.watchdog\.dev/$WD_ID/g" "$file" > "$dir/$name"
+              rm "$file"
+            done
+          done
+
+  # The root daemon. A plain command-line binary started by launchd.
+  WatchDogDaemon:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Daemon
+        excludes:
+          - "*.plist"
+    dependencies:
+      - package: WatchDogCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(WD_ID).daemon
+        PRODUCT_NAME: WatchDogDaemon
+        SKIP_INSTALL: YES
+        # A bare binary has no Info.plist, so give its signature a stable name.
+        # The app will later identify the daemon (and vice versa) by this.
+        OTHER_CODE_SIGN_FLAGS: "$(inherited) --identifier $(WD_ID).daemon"
+
+  # Desktop and Notification Center widgets: "Focus & Breaks" and "Pomodoro".
+  # Sandboxed, as WidgetKit requires. It reads the snapshot the app publishes
+  # in the shared App Group container and never opens the usage database;
+  # its buttons leave commands there for the app (WidgetChannel in WatchDogCore).
+  WatchDogWidgets:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Widgets
+    dependencies:
+      - package: WatchDogCore
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: WatchDog
+        # An extension's version must match its app's.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WDAppGroup: $(DEVELOPMENT_TEAM).$(WD_ID)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(WD_ID).widgets
+        PRODUCT_NAME: WatchDogWidgets
+        CODE_SIGN_ENTITLEMENTS: Config/WatchDogWidgets.entitlements
+        REGISTER_APP_GROUPS: NO
+        SKIP_INSTALL: YES

@@ -1,0 +1,21 @@
+// Your own signing settings. Copy this file and fill in your values:
+//
+//   cp Config/Local.example.xcconfig Config/Local.xcconfig
+//
+// Local.xcconfig is ignored by git. Signing.xcconfig includes it, and
+// install-armed.sh reads it, so the app, the daemon and the installer all
+// trust the same team.
+
+// Your 10-character team ID. Find it in Xcode > Settings > Apple Accounts, or
+// as the OU of your signing certificate:
+//   security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+// Optional: pick one certificate when you have several, by its SHA-1 from
+//   security find-identity -v -p codesigning
+// CODE_SIGN_IDENTITY = 0123456789ABCDEF0123456789ABCDEF01234567
+
+// To build without any Apple ID (the app runs, the daemon cannot register):
+// CODE_SIGN_STYLE = Manual
+// CODE_SIGN_IDENTITY = -
+// DEVELOPMENT_TEAM =

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Shared with the widget extension. A macOS-style group (team ID
+         prefix): no registration or provisioning profile, and macOS lets the
+         team's own code open its container without asking. -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>$(DEVELOPMENT_TEAM).$(WD_ID)</string>
+        <!-- The app's alone (WD.privateGroupID): usage history, rules draft,
+             timer and history settings. Never add this to the widget. -->
+        <string>$(DEVELOPMENT_TEAM).$(WD_ID).private</string>
+    </array>
+</dict>
+</plist>

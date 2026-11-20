@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- launchd job description for the daemon. SMAppService registers this file. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.watchdog.dev.daemon</string>
+    <!-- Path to the binary, relative to the app bundle. -->
+    <key>BundleProgram</key>
+    <string>Contents/MacOS/WatchDogDaemon</string>
+    <!-- The XPC endpoint. launchd starts the daemon on first connection. -->
+    <key>MachServices</key>
+    <dict>
+        <key>local.watchdog.dev.daemon</key>
+        <true/>
+        <key>local.watchdog.dev.daemon.enrollment</key>
+        <true/>
+    </dict>
+    <!-- Start at boot, without waiting for the app to connect: a block that
+         was running before a reboot must resume counting on its own. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- If the daemon exits or crashes, launchd starts it again. -->
+    <key>KeepAlive</key>
+    <true/>
+    <!-- Shows the item under "WatchDog" in System Settings > Login Items. -->
+    <key>AssociatedBundleIdentifiers</key>
+    <array>
+        <string>local.watchdog.dev</string>
+    </array>
+</dict>
+</plist>

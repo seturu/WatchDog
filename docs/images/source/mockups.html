@@ -1,0 +1,567 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: "WDRounded"; src: url("SFNSRounded.ttf"); font-weight: 100 1000; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: 13px; color: var(--text); -webkit-font-smoothing: antialiased;
+}
+body.light {
+  --text: #1d1d1f; --text2: rgba(0,0,0,.52); --text3: rgba(0,0,0,.28); --q: rgba(0,0,0,.09); --q2: rgba(0,0,0,.05);
+  --win: #ffffff; --card: #f3f3f6; --cardline: rgba(0,0,0,.08); --sidebar: rgba(238,238,242,.94); --sideline: rgba(0,0,0,.07);
+  --sep: rgba(0,0,0,.09); --sel: rgba(0,0,0,.075);
+  --accent: #007aff; --indigo: #5856d6; --green: #34c759; --orange: #ff9500; --red: #ff3b30; --purple: #af52de;
+  --pink: #ff2d55; --teal: #30b0c7; --mint: #00c7be; --blue: #007aff; --gray: #8e8e93; --brown: #a2845e; --yellow: #ffcc00;
+  --glass: rgba(255,255,255,.78); --glassline: rgba(0,0,0,.07); --glasshi: rgba(255,255,255,.9);
+  --formsec: rgba(0,0,0,.032); --formline: rgba(0,0,0,.06); --field: #ffffff; --fieldline: rgba(0,0,0,.14);
+  --shadow: 0 22px 60px rgba(20,20,40,.22), 0 4px 14px rgba(20,20,40,.10);
+  --wall: radial-gradient(1200px 700px at 12% 0%, #c9d6ff 0%, transparent 60%), radial-gradient(900px 600px at 95% 30%, #ffd9ec 0%, transparent 55%), radial-gradient(900px 700px at 45% 110%, #c8f0ea 0%, transparent 60%), #e9ecf7;
+  --menubar: rgba(255,255,255,.35); --menutext: #1d1d1f;
+  --diag: #ffffff; --diagline: rgba(0,0,0,.08);
+}
+body.dark {
+  --text: #f5f5f7; --text2: rgba(255,255,255,.56); --text3: rgba(255,255,255,.27); --q: rgba(255,255,255,.11); --q2: rgba(255,255,255,.06);
+  --win: #1d1d1f; --card: #2a2a2d; --cardline: rgba(255,255,255,.08); --sidebar: rgba(46,46,50,.94); --sideline: rgba(255,255,255,.07);
+  --sep: rgba(255,255,255,.1); --sel: rgba(255,255,255,.1);
+  --accent: #0a84ff; --indigo: #5e5ce6; --green: #30d158; --orange: #ff9f0a; --red: #ff453a; --purple: #bf5af2;
+  --pink: #ff375f; --teal: #40c8e0; --mint: #63e6e2; --blue: #0a84ff; --gray: #8e8e93; --brown: #ac8e68; --yellow: #ffd60a;
+  --glass: rgba(56,56,60,.80); --glassline: rgba(255,255,255,.10); --glasshi: rgba(255,255,255,.12);
+  --formsec: rgba(255,255,255,.045); --formline: rgba(255,255,255,.07); --field: rgba(255,255,255,.06); --fieldline: rgba(255,255,255,.14);
+  --shadow: 0 22px 60px rgba(0,0,0,.55), 0 4px 14px rgba(0,0,0,.35);
+  --wall: radial-gradient(1200px 700px at 12% 0%, #2b2f6b 0%, transparent 60%), radial-gradient(900px 600px at 95% 30%, #4a1f45 0%, transparent 55%), radial-gradient(900px 700px at 45% 110%, #0f3b3f 0%, transparent 60%), #141522;
+  --menubar: rgba(0,0,0,.18); --menutext: #f5f5f7;
+  --diag: #1d1d1f; --diagline: rgba(255,255,255,.09);
+}
+
+/* SF Symbols, exported from AppKit, used as masks so they take the text colour. */
+.sf { display: inline-block; width: 1em; height: 1em; background: currentColor; flex: none;
+  -webkit-mask: var(--s) center / contain no-repeat; mask: var(--s) center / contain no-repeat; vertical-align: -0.13em; }
+
+.canvas { position: relative; overflow: hidden; }
+.row { display: flex; align-items: center; }
+.col { display: flex; flex-direction: column; }
+.grow { flex: 1; min-width: 0; }
+.sec { color: var(--text2); }
+.ter { color: var(--text3); }
+.mono { font-variant-numeric: tabular-nums; }
+.rounded { font-family: "WDRounded", "SF Pro Rounded", -apple-system, sans-serif; }
+.ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Window chrome, macOS 26 */
+.window { position: absolute; background: var(--win); border-radius: 24px; box-shadow: var(--shadow), 0 0 0 .5px rgba(0,0,0,.18); overflow: hidden; }
+body.dark .window { box-shadow: var(--shadow), 0 0 0 .5px rgba(255,255,255,.14); }
+.sidebar { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 214px; background: var(--sidebar); border-radius: 18px;
+  border: .5px solid var(--sideline); box-shadow: 0 1px 6px rgba(0,0,0,.06); display: flex; flex-direction: column; }
+.lights { display: flex; gap: 8px; padding: 14px 0 0 14px; height: 46px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; display: block; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.15); }
+.side-list { padding: 4px 10px; display: flex; flex-direction: column; gap: 2px; }
+.side-item { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 9px; font-size: 13px; }
+.side-item .sf { color: var(--accent); font-size: 15px; width: 18px; }
+.side-item.sel { background: var(--sel); }
+.side-badge { margin-left: auto; font-size: 11px; color: var(--text2); background: var(--q); border-radius: 9px; padding: 1px 7px; font-weight: 500; }
+.side-status { margin-top: auto; border-top: .5px solid var(--sep); padding: 8px 14px 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.badge { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+.detail { position: absolute; left: 230px; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
+.toolbar { height: 54px; display: flex; align-items: center; padding: 0 14px 0 14px; gap: 8px; flex: none; }
+.toolbar .t { font-size: 15px; font-weight: 700; }
+.toolbar .st { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.glassbtn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px; border-radius: 16px; background: var(--glass);
+  border: .5px solid var(--glassline); box-shadow: 0 1px 4px rgba(0,0,0,.08), inset 0 .5px 0 var(--glasshi); font-size: 13px; font-weight: 500; }
+.glassgroup { display: inline-flex; align-items: center; height: 32px; border-radius: 16px; background: var(--glass);
+  border: .5px solid var(--glassline); box-shadow: 0 1px 4px rgba(0,0,0,.08), inset 0 .5px 0 var(--glasshi); padding: 0 4px; }
+.glassgroup span { width: 32px; display: inline-flex; justify-content: center; font-size: 15px; }
+.content { flex: 1; overflow: hidden; padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Cards */
+.card { background: var(--card); border-radius: 14px; border: .5px solid var(--cardline); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.card-h { display: flex; align-items: baseline; gap: 6px; font-weight: 700; font-size: 13px; }
+.card-h .sf { color: var(--text2); font-size: 13px; margin-right: 2px; }
+.tile { flex: 1; background: var(--card); border-radius: 14px; border: .5px solid var(--cardline); padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.tile .lbl { font-size: 11px; font-weight: 500; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+.tile .val { font-size: 30px; font-weight: 600; line-height: 36px; }
+.tile .cap { font-size: 10px; color: var(--text2); }
+.banner { border-radius: 14px; padding: 12px; display: flex; align-items: center; gap: 12px; }
+.banner .sf { font-size: 20px; }
+.banner .h { font-weight: 500; }
+.banner .d { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.progress { height: 5px; border-radius: 3px; background: var(--q); position: relative; overflow: hidden; }
+.progress i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; display: block; }
+
+.urow { display: flex; align-items: center; gap: 10px; }
+.urow img, .appicon { width: 26px; height: 26px; flex: none; }
+.ubar { height: 4px; border-radius: 2px; background: var(--q2); margin-top: 4px; }
+.ubar i { display: block; height: 4px; border-radius: 2px; min-width: 4px; }
+.siteicon { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff;
+  font-weight: 600; font-size: 13.5px; flex: none; }
+.divider { height: .5px; background: var(--sep); }
+
+/* Controls */
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 11px; border-radius: 7px; font-size: 13px;
+  background: var(--field); border: .5px solid var(--fieldline); box-shadow: 0 .5px 1px rgba(0,0,0,.08); white-space: nowrap; }
+body.dark .btn { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.08); }
+.btn.lg { height: 30px; padding: 0 14px; border-radius: 9px; font-size: 13px; }
+.btn.prom { background: var(--accent); color: #fff; border-color: transparent; font-weight: 500; }
+.popup { display: inline-flex; align-items: center; gap: 5px; color: var(--text); }
+.popup .sf { font-size: 9px; color: var(--text2); }
+.toggle { width: 26px; height: 15px; border-radius: 8px; background: var(--q); position: relative; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 1.5px; left: 1.5px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 .5px 2px rgba(0,0,0,.3); }
+.toggle.on { background: var(--accent); }
+.toggle.on::after { left: 12.5px; }
+.stepper { width: 14px; height: 22px; border-radius: 5px; border: .5px solid var(--fieldline); background: var(--field); display: inline-flex; flex-direction: column;
+  align-items: center; justify-content: space-around; font-size: 6px; color: var(--text2); flex: none; }
+.chip { font-size: 12px; padding: 4px 8px; border-radius: 6px; background: var(--q); color: var(--text2); }
+.chip.on { background: var(--accent); color: #fff; font-weight: 600; }
+
+/* Grouped form */
+.form { flex: 1; overflow: hidden; padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
+.fsec-h { font-weight: 700; font-size: 13px; margin: 0 0 7px 2px; }
+.fsec { background: var(--formsec); border: .5px solid var(--formline); border-radius: 12px; padding: 0 12px; }
+.frow { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 8px 0; border-bottom: .5px solid var(--formline); }
+.frow:last-child { border-bottom: 0; }
+.frow .v { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+
+/* Popover */
+.popover { position: absolute; border-radius: 18px; background: var(--glass); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+  border: .5px solid var(--glassline); box-shadow: 0 18px 50px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.12); padding: 16px; width: 320px;
+  display: flex; flex-direction: column; gap: 14px; }
+body.light .popover { background: rgba(250,250,252,.82); }
+body.dark .popover { background: rgba(40,40,44,.82); }
+.gbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; border-radius: 16px; padding: 0 12px; font-size: 13px; font-weight: 500;
+  background: var(--glass); border: .5px solid var(--glassline); box-shadow: 0 1px 3px rgba(0,0,0,.1), inset 0 .5px 0 var(--glasshi); }
+.gbtn.prom { background: var(--accent); color: #fff; border-color: rgba(255,255,255,.15); }
+.menubar { position: absolute; left: 0; right: 0; top: 0; height: 30px; background: var(--menubar); backdrop-filter: blur(20px);
+  display: flex; align-items: center; justify-content: flex-end; gap: 18px; padding: 0 16px; color: var(--menutext); font-size: 13px; font-weight: 500; }
+.menubar .sf { font-size: 15px; }
+.mb-item { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 6px; }
+.mb-item.open { background: rgba(127,127,127,.28); }
+
+/* Widgets */
+.widget { position: absolute; border-radius: 22px; padding: 16px; background: rgba(255,255,255,.62); backdrop-filter: blur(30px);
+  border: .5px solid rgba(255,255,255,.6); box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+body.dark .widget { background: rgba(30,30,34,.62); border-color: rgba(255,255,255,.1); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+
+/* Diagrams */
+.dbox { background: var(--card); border: .5px solid var(--cardline); border-radius: 14px; padding: 14px 16px; }
+.dtitle { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const params = new URLSearchParams(location.search);
+const frame = params.get("frame") || "today";
+const theme = params.get("theme") || "light";
+document.body.className = theme;
+
+const sf = (name, style = "") => `<i class="sf" style="--s:url('sym/${name}.png');${style}"></i>`;
+const app = (key, size = 26) => `<img src="apps/${key}.png" style="width:${size}px;height:${size}px;flex:none">`;
+const C = n => `var(--${n})`;
+
+// The app's own SiteIcon: a monogram on a colour fixed by the domain.
+const siteColors = ["red", "orange", "green", "teal", "blue", "indigo", "purple", "pink", "brown"];
+function siteIcon(domain, size = 26) {
+  let seed = 0;
+  for (const ch of domain) seed = ((seed * 31) + ch.codePointAt(0)) & 0xFFFF;
+  const c = siteColors[seed % siteColors.length];
+  return `<div class="siteicon" style="width:${size}px;height:${size}px;border-radius:${size * .26}px;font-size:${size * .52}px;
+    background:linear-gradient(180deg, color-mix(in srgb, var(--${c}) 82%, white), var(--${c}))">${domain[0].toUpperCase()}</div>`;
+}
+const timerBadge = (state) => state === "focus"
+  ? `<span class="badge" style="color:var(--indigo);background:color-mix(in srgb, var(--indigo) 15%, transparent)">Focus</span>`
+  : state === "break" ? `<span class="badge" style="color:var(--green);background:color-mix(in srgb, var(--green) 15%, transparent)">Break</span>` : "";
+
+function sidebar(selected, opts = {}) {
+  const items = [["today", "Today", "sun.max"], ["focus", "Focus", "timer"], ["rules", "Rules", "checklist"],
+    ["history", "History", "clock.arrow.circlepath"], ["setup", "Setup", "checklist.checked"], ["settings", "Settings", "gearshape"]];
+  const badges = { history: opts.history ?? 3, setup: opts.setup ?? 0 };
+  return `<div class="sidebar">
+    <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="side-list">${items.map(([k, t, s]) => `<div class="side-item ${k === selected ? "sel" : ""}">${sf(s)}<span>${t}</span>
+      ${badges[k] ? `<span class="side-badge">${badges[k]}</span>` : ""}</div>`).join("")}</div>
+    <div class="side-status"><span class="dot" style="background:var(--green)"></span>Tracking<span style="margin-left:auto">${timerBadge(opts.timer ?? "focus")}</span></div>
+  </div>`;
+}
+const modeSwitch = (on = true) => `<div class="glassbtn" style="color:${on ? C("accent") : C("text2")}">${sf(on ? "shield.lefthalf.filled" : "testtube.2")}${on ? "Enforcing" : "Dry run"}</div>`;
+function windowFrame({ x = 40, y = 30, w = 1040, h = 800, pane, title, subtitle, tools = "", body, side = {} }) {
+  return `<div class="window" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">
+    ${sidebar(pane, side)}
+    <div class="detail">
+      <div class="toolbar"><div><div class="t">${title}</div><div class="st">${subtitle}</div></div><div class="grow"></div>${tools}${modeSwitch()}</div>
+      ${body}
+    </div></div>`;
+}
+
+// ---------- Shared sample day ----------
+const series = [["Xcode", "blue"], ["Brave Browser", "purple"], ["Terminal", "pink"], ["Notes", "orange"], ["Messages", "teal"], ["Other", "gray"]];
+const hours = [["08", [12, 8, 2, 6, 3, 1]], ["09", [28, 12, 6, 2, 2, 1]], ["10", [34, 10, 5, 3, 1, 1]], ["11", [22, 14, 4, 1, 3, 2]],
+  ["12", [4, 9, 0, 2, 2, 4]], ["13", [18, 9, 4, 0, 1, 2]], ["14", [31, 6, 5, 0, 1, 1]], ["15", [9, 4, 0, 0, 0, 0]]];
+const seriesColor = (name) => name === "Other" ? "color-mix(in srgb, var(--gray) 45%, transparent)" : C(series.find(s => s[0] === name)?.[1] ?? "gray");
+
+function hourChart() {
+  const H = 190, axisW = 30, labelH = 18, plotH = H - labelH;
+  const cols = hours.map(([k, vals]) => {
+    let segs = "";
+    vals.forEach((m, i) => { if (m > 0) segs = `<div style="height:${m / 60 * plotH - 1.5}px;margin-top:1.5px;border-radius:3px;background:${seriesColor(series[i][0])}"></div>` + segs; });
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="height:${plotH}px;width:62%;display:flex;flex-direction:column;justify-content:flex-end">${segs}</div>
+      <div style="height:${labelH}px;font-size:10px;color:var(--text2);padding-top:4px">${k}</div></div>`;
+  }).join("");
+  const grid = [0, 20, 40, 60].map(v => `<div style="position:absolute;left:0;right:0;top:${plotH - v / 60 * plotH}px;border-top:.5px solid var(--sep)">
+     <span style="position:absolute;right:-${axisW}px;top:-7px;width:${axisW - 6}px;font-size:10px;color:var(--text2)">${v}m</span></div>`).join("");
+  const legend = series.map(([n]) => `<span class="row" style="gap:5px;font-size:11px;color:var(--text2)"><span class="dot" style="background:${seriesColor(n)}"></span>${n}</span>`).join("");
+  return `<div style="position:relative;height:${H}px;margin-right:${axisW}px"><div style="position:absolute;inset:0 0 ${labelH}px 0">${grid}</div>
+    <div style="position:absolute;inset:0;display:flex">${cols}</div></div>
+    <div class="row" style="gap:12px;margin-top:-2px">${legend}</div>`;
+}
+const fmt = m => m >= 60 ? (m % 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m / 60}h`) : `${m}m`;
+function usageRows(rows, iconFn, tintFn) {
+  const max = rows[0][1];
+  return `<div class="col" style="gap:12px">${rows.map(([label, m, key]) => `<div class="urow">${iconFn(key, label)}
+    <div class="grow"><div class="row"><span class="ell">${label}</span><span class="sec mono" style="margin-left:auto">${fmt(m)}</span></div>
+    <div class="ubar"><i style="width:${m / max * 100}%;background:linear-gradient(180deg, color-mix(in srgb, ${tintFn(label)} 80%, white), ${tintFn(label)})"></i></div></div></div>`).join("")}</div>`;
+}
+
+// ---------- Today ----------
+function today() {
+  const apps = [["Xcode", 158, "xcode"], ["Brave Browser", 72, "brave"], ["Terminal", 26, "terminal"], ["Notes", 14, "notes"], ["Messages", 13, "messages"], ["Music", 12, "music"]];
+  const sites = [["developer.apple.com", 29], ["github.com", 17], ["stackoverflow.com", 9], ["claude.ai", 8], ["youtube.com", 6], ["news.ycombinator.com", 3]];
+  const appTint = l => series.some(s => s[0] === l) ? seriesColor(l) : C("gray");
+  const timeline = [["xcode", "Xcode", "TodayView.swift", "6m", "2:36 PM"], ["brave", "Brave Browser", "developer.apple.com", "2m", "2:34 PM"], ["xcode", "Xcode", "DaySummary.swift", "11m", "2:23 PM"]];
+  const body = `<div class="content">
+    <div class="card" style="flex-direction:row;align-items:center;gap:14px;padding:16px">
+      ${app("xcode", 44)}
+      <div class="col" style="gap:2px"><div style="font-size:10px;font-weight:600;color:var(--text3)">NOW</div>
+        <div style="font-size:15px;font-weight:600">Xcode</div><div class="sec">TodayView.swift</div></div>
+      <div class="grow"></div>
+      <div class="col" style="align-items:flex-end;gap:4px;font-size:12px">
+        <div class="row" style="gap:5px;color:var(--indigo);font-weight:500">${sf("timer")}Focus session</div>
+        <div class="sec mono">Deep work · 18m left</div>
+        <div class="row sec" style="gap:5px">${sf("speaker.wave.2.fill")}Lo-fi Focus Mix</div>
+      </div>
+    </div>
+    <div class="banner" style="background:color-mix(in srgb, var(--red) 10%, transparent)">
+      <span style="color:var(--red)">${sf("lock.fill")}</span>
+      <div class="col grow"><div class="h mono">Blocked for 18m 40s</div><div class="d">x.com, reddit.com, instagram.com</div></div>
+      <div class="progress" style="width:120px"><i style="width:38%;background:var(--red)"></i></div>
+    </div>
+    <div class="row" style="gap:16px;align-items:stretch">
+      <div class="tile"><div class="lbl"><span style="color:var(--blue)">${sf("bolt.fill")}</span>Active</div><div class="val rounded mono">4h 55m</div><div class="cap">At the keyboard</div></div>
+      <div class="tile"><div class="lbl"><span style="color:var(--indigo)">${sf("brain.head.profile")}</span>Focus</div><div class="val rounded mono">3h 40m</div><div class="cap">75% of active time</div></div>
+      <div class="tile"><div class="lbl"><span style="color:var(--gray)">${sf("figure.walk")}</span>Away</div><div class="val rounded mono">38m</div><div class="cap">No input for 2 min or more</div></div>
+      <div class="tile"><div class="lbl"><span style="color:var(--green)">${sf("cup.and.saucer.fill")}</span>Break budget</div><div class="val rounded mono">35m</div><div class="cap">31m used of 1h 6m earned</div></div>
+    </div>
+    <div class="card"><div class="card-h">${sf("chart.bar.xaxis")}Through the day</div>${hourChart()}</div>
+    <div class="row" style="gap:16px;align-items:flex-start">
+      <div class="card grow"><div class="card-h">${sf("square.grid.2x2")}Apps</div>${usageRows(apps, k => app(k, 26), appTint)}</div>
+      <div class="card grow"><div class="card-h">${sf("globe")}Sites</div>${usageRows(sites.map(s => [s[0], s[1], s[0]]), k => siteIcon(k), () => C("teal"))}</div>
+    </div>
+    <div class="card"><div class="card-h">${sf("list.bullet")}Recent activity</div>
+      <div class="col">${timeline.map(([k, n, d, len, at], i) => `${i ? '<div class="divider" style="margin-left:38px"></div>' : ""}
+        <div class="row" style="gap:12px;padding:7px 0">${app(k, 26)}<div class="col grow" style="gap:1px"><div class="row" style="gap:6px">${n}${timerBadge("focus")}</div>
+        <div class="sec" style="font-size:12px">${d}</div></div><div class="col" style="align-items:flex-end;gap:1px"><span class="mono">${len}</span><span class="sec mono" style="font-size:10px">${at}</span></div></div>`).join("")}</div></div>
+  </div>`;
+  return { w: 1120, h: 960, html: windowFrame({ h: 890, pane: "today", title: "Today", subtitle: "Thursday, November 19, 2026", body }) };
+}
+
+// ---------- Focus ----------
+function ring(d, stroke, frac, color, track = "var(--q)") {
+  const r = (d - stroke) / 2, c = 2 * Math.PI * r;
+  return `<svg width="${d}" height="${d}" style="position:absolute;inset:0;transform:rotate(-90deg)">
+    <circle cx="${d / 2}" cy="${d / 2}" r="${r}" fill="none" stroke="${track}" stroke-width="${stroke}"/>
+    <circle cx="${d / 2}" cy="${d / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c * frac} ${c}"/></svg>`;
+}
+const roundDots = (done, current, total = 4, size = 7, gap = 5) => `<span class="row" style="gap:${gap}px">${Array.from({ length: total }, (_, i) =>
+  `<span class="dot" style="width:${size}px;height:${size}px;background:${i < done ? C("indigo") : i === current ? "color-mix(in srgb, var(--indigo) 40%, transparent)" : C("q")}"></span>`).join("")}</span>`;
+const catDot = (c, s = 10) => `<span class="dot" style="width:${s}px;height:${s}px;background:${C(c)}"></span>`;
+const popup = (text) => `<span class="popup">${text}${sf("chevron.up.chevron.down")}</span>`;
+
+function focus() {
+  const sessions = [
+    ["indigo", "Deep work", "Widget timeline and snapshot", "focused", "25m", "1:52 PM", true],
+    ["teal", "Reading", "Rule engine notes", "neutral", "25m", "11:05 AM", true],
+    ["indigo", "Deep work", "Kept drifting to the news", "distracted", "25m", "10:21 AM", true],
+    ["orange", "Admin", null, "focused", "14m", "9:40 AM", false],
+  ];
+  const ratingIcon = { focused: ["checkmark.circle.fill", "green"], neutral: ["minus.circle.fill", "gray"], distracted: ["exclamationmark.circle.fill", "orange"] };
+  const rows = sessions.map(([c, name, note, rating, len, at, done], i) => `${i ? '<div class="divider" style="margin-left:20px"></div>' : ""}
+    <div class="row" style="gap:10px;padding:6px 0">${catDot(c)}<div class="col grow" style="gap:1px"><div class="row" style="gap:6px">${name}${done ? "" : '<span class="ter" style="font-size:10px">ended early</span>'}</div>
+    ${note ? `<div class="sec" style="font-size:12px">${note}</div>` : ""}</div>
+    <span style="color:${C(ratingIcon[rating][1])};font-size:14px">${sf(ratingIcon[rating][0])}</span>
+    <div class="col" style="align-items:flex-end;gap:1px;min-width:54px"><span class="mono">${len}</span><span class="sec mono" style="font-size:10px">${at}</span></div></div>`).join("");
+  const yesterday = [["indigo", "Deep work", "Pomodoro machine tests", "focused", "25m", "4:10 PM"], ["indigo", "Deep work", null, "focused", "25m", "3:40 PM"]];
+  const yrows = yesterday.map(([c, name, note, rating, len, at], i) => `${i ? '<div class="divider" style="margin-left:20px"></div>' : ""}
+    <div class="row" style="gap:10px;padding:6px 0">${catDot(c)}<div class="col grow" style="gap:1px"><div>${name}</div>${note ? `<div class="sec" style="font-size:12px">${note}</div>` : ""}</div>
+    <span style="color:${C(ratingIcon[rating][1])};font-size:14px">${sf(ratingIcon[rating][0])}</span>
+    <div class="col" style="align-items:flex-end;gap:1px;min-width:54px"><span class="mono">${len}</span><span class="sec mono" style="font-size:10px">${at}</span></div></div>`).join("");
+  const body = `<div class="content" style="padding-left:max(20px, calc((100% - 900px)/2));padding-right:max(20px, calc((100% - 900px)/2))">
+    <div class="card"><div class="row" style="gap:28px;padding:6px 0">
+      <div style="position:relative;width:168px;height:168px;flex:none">${ring(168, 10, 0.25, C("indigo"))}
+        <div class="col" style="position:absolute;inset:0;align-items:center;justify-content:center;gap:2px">
+          <div class="rounded mono" style="font-size:33.6px;font-weight:600">18:42</div><div class="sec" style="font-size:12px">Focus</div></div></div>
+      <div class="col" style="gap:12px">
+        <div class="row" style="gap:7px;font-size:17px;font-weight:600;color:var(--indigo)">${sf("timer")}Focus</div>
+        <div class="row" style="gap:10px">${roundDots(1, 1)}<span class="sec" style="font-size:12px">Session 2 of 4</span></div>
+        <div class="row" style="gap:8px">${catDot("indigo")}${popup("Deep work")}</div>
+        <div class="row" style="gap:8px;margin-top:4px">
+          <span class="btn lg prom">${sf("pause.fill")}Pause</span><span class="btn lg">${sf("forward.end.fill")}Skip</span><span class="btn lg">${sf("stop.fill")}Stop</span></div>
+        <div class="sec" style="font-size:10px">25 min focus, 5 min breaks, 15 min after every 4.</div>
+      </div></div></div>
+    <div class="card"><div class="row"><div class="card-h">Today</div><span class="sec mono" style="margin-left:auto;font-size:12px">4 sessions · 1h 29m · 2 focused</span></div><div class="col">${rows}</div></div>
+    <div class="card"><div class="row"><div class="card-h">Yesterday</div><span class="sec mono" style="margin-left:auto;font-size:12px">2 sessions · 50m · 2 focused</span></div><div class="col">${yrows}</div></div>
+  </div>`;
+  return { w: 1120, h: 770, html: windowFrame({ h: 700, pane: "focus", title: "Focus", subtitle: "Built-in timer", body }) };
+}
+
+// ---------- Rules ----------
+function rules() {
+  const list = [
+    ["cup.and.saucer.fill", "green", "YouTube on workdays", "35m of break budget left", true, true],
+    ["nosign", "red", "Social media", "Watching", true, false],
+    ["sum", "purple", "News, in moderation", "12m of 30m", true, false],
+    ["hourglass", "orange", "Twitch", "Off", false, false],
+  ];
+  const listHtml = list.map(([sym, tint, name, status, on, selected]) => `<div class="row" style="gap:10px;padding:6px 10px;margin:0 8px;border-radius:9px;${selected ? "background:var(--accent);color:#fff" : ""}">
+    <div style="width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex:none;
+      background:linear-gradient(180deg, color-mix(in srgb, ${on ? C(tint) : C("gray")} 82%, white), ${on ? C(tint) : C("gray")})">${sf(sym)}</div>
+    <div class="col grow" style="gap:2px"><span class="ell">${name}</span><span class="mono" style="font-size:10px;${selected ? "color:rgba(255,255,255,.8)" : "color:var(--text2)"}">${status}</span></div>
+    <span class="toggle ${on ? "on" : ""}" style="${selected && on ? "background:rgba(255,255,255,.45)" : ""}"></span></div>`).join("");
+  const sentence = "On weekdays from 09:00 to 19:00, youtube.com is for breaks only. Each hour of focus earns 18 minutes, one break tops out at 15, and the budget starts empty each day. Otherwise WatchDog will close it.";
+  const stepRow = (label) => `<div class="frow"><span>${label}</span><span class="v"><span class="stepper">${sf("chevron.up.chevron.down", "font-size:12px")}</span></span></div>`;
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => `<span class="chip ${i < 5 ? "on" : ""}">${d}</span>`).join("");
+  const editor = `<div class="form">
+    <div class="fsec">
+      <div class="frow"><span>Name</span><span class="v">YouTube on workdays</span></div>
+      <div class="frow" style="flex-direction:column;align-items:stretch;gap:8px;padding:10px 0">
+        <div class="sec" style="line-height:1.4">${sentence}</div>
+        <div class="col" style="gap:5px"><div class="row" style="font-size:12px"><span>Break budget</span></div>
+          <div class="progress" style="height:6px"><i style="width:53%;background:var(--green)"></i></div>
+          <div class="row sec" style="font-size:12px">35m left</div></div>
+        <div class="sec mono" style="font-size:10px">1h 6m earned · 31m used · now: not on a break</div>
+      </div>
+    </div>
+    <div><div class="fsec-h">Applies to any of</div><div class="fsec">
+      <div class="frow"><span>Sites</span><span class="v">youtube.com</span></div>
+      <div class="frow"><span>Apps</span><span class="v col" style="align-items:flex-end;gap:6px"><span class="ter">None</span><span class="btn">Add App ${sf("chevron.down", "font-size:8px;color:var(--text2)")}</span></span></div>
+      <div class="frow"><span>Window title contains</span><span class="v ter">netflix, twitch</span></div>
+    </div></div>
+    <div><div class="fsec-h">When</div><div class="fsec">
+      <div class="frow"><span>Active</span><span class="v">${popup("On a schedule")}</span></div>
+      <div class="frow"><span>Days</span><span class="v" style="gap:4px">${days}</span></div>
+      <div class="frow"><span>From</span><span class="v"><span class="btn mono" style="padding:0 8px">09:00</span><span class="stepper">${sf("chevron.up.chevron.down", "font-size:12px")}</span></span></div>
+      <div class="frow"><span>Until</span><span class="v"><span class="btn mono" style="padding:0 8px">19:00</span><span class="stepper">${sf("chevron.up.chevron.down", "font-size:12px")}</span></span></div>
+    </div></div>
+    <div><div class="fsec-h">Limit</div><div class="fsec">
+      <div class="frow"><span>Count time</span><span class="v">${popup("Pomodoro it")}</span></div>
+      ${stepRow("Focus interval: 25 min")}${stepRow("Short break: 5 min")}${stepRow("Long break: 15 min")}${stepRow("Long break every 4 intervals")}
+    </div></div>
+    <div><div class="fsec-h">Then</div><div class="fsec">
+      <div class="frow"><span>Response</span><span class="v">${popup("Close it")}</span></div>
+      ${stepRow("Then stay quiet for 5 min")}
+    </div></div>
+  </div>`;
+  const body = `<div style="flex:1;display:flex;min-height:0;border-top:.5px solid var(--sep)">
+    <div style="width:300px;flex:none;padding-top:10px;display:flex;flex-direction:column;gap:2px">${listHtml}</div>
+    <div style="width:.5px;background:var(--sep)"></div>
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;padding-top:14px">${editor}</div></div>`;
+  const tools = `<div class="glassgroup" style="margin-right:4px"><span>${sf("plus")}</span><span>${sf("trash")}</span></div>`;
+  return { w: 1120, h: 900, html: windowFrame({ h: 830, pane: "rules", title: "Rules", subtitle: "3 active", tools, body }) };
+}
+
+// ---------- Setup ----------
+function setup() {
+  const step = (state, title, detail, action = "") => {
+    const s = { done: ["checkmark.circle.fill", "green"], needed: ["exclamationmark.circle.fill", "orange"], optional: ["circle.dashed", "text2"] }[state];
+    return `<div class="frow" style="gap:12px;padding:10px 0"><span style="width:28px;font-size:21px;color:${C(s[1])};display:flex;justify-content:center">${sf(s[0])}</span>
+      <div class="col grow" style="gap:2px"><span style="font-weight:500">${title}</span><span class="sec" style="font-size:12px">${detail}</span></div>${action}</div>`;
+  };
+  const body = `<div class="form" style="padding-top:8px">
+    <div><div class="fsec-h">Required</div><div class="fsec">
+      ${step("done", "Background service", "Installed and answering. It holds your rules and runs the blocks.")}
+      ${step("done", "Accessibility", "Lets WatchDog read window titles, so rules can match on them.")}
+      ${step("optional", "Addresses from Safari", "macOS asks the first time you use Safari while WatchDog is running.")}
+      ${step("done", "Addresses from Brave Browser", "WatchDog can read the current tab’s address.")}
+      ${step("needed", "Addresses from Google Chrome", "Not allowed. Switch Google Chrome on for WatchDog under Automation.", '<span class="btn">Open Settings…</span>')}
+      ${step("done", "Notifications", "Warnings, and a note whenever a rule closes or blocks something.")}
+    </div></div>
+    <div><div class="fsec-h">Recommended</div><div class="fsec">
+      ${step("done", "Start at login and keep running", "Without it, tracking stops at the next restart until you open WatchDog again.")}
+      ${step("done", "Pomodoro timer", "Using WatchDog’s own timer. Rules can follow its focus and break intervals.")}
+    </div></div></div>`;
+  return { w: 1120, h: 670, html: windowFrame({ h: 600, pane: "setup", title: "Setup", subtitle: "1 to go", body, side: { setup: 1 } }) };
+}
+
+// ---------- Menu bar popover ----------
+function popover() {
+  const W = 640, H = 470;
+  const pop = `<div class="popover" style="left:${W - 480}px;top:38px">
+    <div class="row" style="gap:12px">${app("xcode", 36)}<div class="col" style="gap:1px"><span style="font-weight:700">Xcode</span><span class="sec" style="font-size:12px">TodayView.swift</span></div></div>
+    <div class="row" style="gap:6px;font-size:12px;color:var(--red);align-items:flex-start"><span style="padding-top:1px">${sf("lock.fill")}</span><span class="mono">Blocked for 18m 40s: x.com, reddit.com, instagram.com</span></div>
+    <div class="divider"></div>
+    <div class="col" style="gap:10px">
+      <div class="row"><span class="row" style="gap:6px;color:var(--indigo);font-weight:500">${sf("timer")}Focus</span>
+        <span class="rounded mono" style="margin-left:auto;font-size:15px;font-weight:600">18:42</span></div>
+      <div class="row" style="gap:8px;font-size:12px">${catDot("indigo")}${popup("Deep work")}<span class="grow"></span>${roundDots(1, 1)}</div>
+      <div class="row" style="gap:8px"><span class="gbtn prom grow">${sf("pause.fill")}Pause</span><span class="gbtn" style="width:40px;padding:0">${sf("forward.end.fill")}</span><span class="gbtn" style="width:40px;padding:0">${sf("stop.fill")}</span></div>
+    </div>
+    <div class="col" style="gap:5px"><span style="font-size:12px">Break budget</span><div class="progress" style="height:6px"><i style="width:53%;background:var(--green)"></i></div><span class="sec mono" style="font-size:12px">35m left</span></div>
+    <div class="divider"></div>
+    <div class="row">${[["Active", "4h 55m"], ["Focus", "3h 40m"], ["Away", "38m"]].map(([t, v], i) =>
+      `${i ? '<span class="grow"></span>' : ""}<div class="col" style="gap:1px"><span class="sec" style="font-size:10px">${t}</span><span class="rounded mono" style="font-size:15px;font-weight:600">${v}</span></div>`).join("")}</div>
+    <div class="row" style="gap:8px"><span class="gbtn prom grow" style="height:34px">Open WatchDog</span><span class="gbtn" style="width:44px;height:34px;padding:0;opacity:.45">${sf("power")}</span></div>
+  </div>`;
+  const html = `<div style="position:absolute;inset:0;background:var(--wall);border-radius:20px;overflow:hidden">
+    <div class="menubar"><span class="mb-item open">${sf("eye.fill")}<span class="mono">18m</span></span>${sf("wifi")}${sf("battery.100percent", "font-size:20px")}${sf("magnifyingglass")}${sf("switch.2")}<span>Thu Nov 19&nbsp;&nbsp;2:42 PM</span></div>
+    ${pop}</div>`;
+  return { w: W, h: H, html };
+}
+
+// ---------- Widgets ----------
+function widgets() {
+  const W = 1000, H = 420;
+  const focusW = `<div class="widget" style="left:60px;top:60px;width:364px;height:170px;display:flex;gap:16px">
+    <div class="col grow" style="gap:8px">
+      <div class="col" style="gap:2px"><span class="row" style="gap:5px;font-size:10px;font-weight:500;color:var(--indigo)">${sf("brain.head.profile")}Focus today</span>
+        <span class="rounded mono" style="font-size:34px;font-weight:600;line-height:40px">3h 40m</span><span class="sec" style="font-size:10px">8 focus intervals</span></div>
+      <div class="grow"></div>
+      <span class="row" style="gap:4px;font-size:10px"><span class="dot" style="width:7px;height:7px;background:var(--indigo)"></span>Focus <span class="sec mono">18:42</span></span>
+    </div>
+    <div class="col grow" style="gap:12px">
+      <div class="col" style="gap:4px"><span class="row" style="gap:5px;font-size:10px;font-weight:500;color:var(--green)">${sf("sparkles")}Breaks earned</span>
+        <div class="progress" style="height:6px"><i style="width:53%;background:var(--green)"></i></div>
+        <span class="mono" style="font-size:12px;font-weight:600">35m left of 1h 6m</span></div>
+      <div class="col" style="gap:2px"><span class="row" style="gap:5px;font-size:10px;font-weight:500;color:var(--green)">${sf("cup.and.saucer.fill")}Breaks taken</span>
+        <span class="mono" style="font-size:12px;font-weight:600">5 breaks · 38m</span></div>
+    </div></div>`;
+  const pomoW = `<div class="widget" style="left:452px;top:60px;width:364px;height:170px;display:flex;gap:16px;align-items:center">
+    <div style="position:relative;width:112px;height:112px;flex:none;margin:4px">${ring(104, 8, 0.25, C("indigo")).replace('style="', 'style="left:4px;top:4px;')}
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center" class="rounded mono"><span style="font-size:17px;font-weight:600">18:42</span></div></div>
+    <div class="col grow" style="gap:6px;align-self:stretch">
+      <span class="row" style="gap:6px;font-weight:700;color:var(--indigo)">${sf("timer")}Focus</span>
+      <span class="row sec" style="gap:5px;font-size:10px">${catDot("indigo", 8)}Deep work</span>
+      ${roundDots(1, 1, 4, 6, 4)}
+      <div class="grow"></div>
+      <div class="row" style="gap:6px"><span class="btn grow" style="justify-content:center;height:26px;color:var(--indigo);background:color-mix(in srgb, var(--indigo) 16%, transparent);border-color:transparent;font-weight:500">${sf("pause.fill")}Pause</span>
+        <span class="btn" style="height:26px;padding:0 9px">${sf("forward.end.fill")}</span><span class="btn" style="height:26px;padding:0 9px">${sf("stop.fill")}</span></div>
+    </div></div>`;
+  const smallW = `<div class="widget" style="left:844px;top:60px;width:170px;height:170px;display:flex;flex-direction:column;gap:6px">
+    <span class="row" style="gap:5px;font-size:10px;font-weight:500;color:var(--green)">${sf("cup.and.saucer.fill")}Break</span>
+    <span class="rounded mono" style="font-size:34px;font-weight:600;line-height:38px">04:12</span>
+    <div class="grow"></div>
+    <div class="row" style="gap:5px"><span class="btn grow" style="justify-content:center;height:22px;color:var(--green);background:color-mix(in srgb, var(--green) 16%, transparent);border-color:transparent">${sf("pause.fill")}</span>
+      <span class="btn" style="height:22px;padding:0 7px">${sf("forward.end.fill")}</span><span class="btn" style="height:22px;padding:0 7px">${sf("stop.fill")}</span></div></div>`;
+  const labels = `<div style="position:absolute;left:60px;top:250px;width:364px;text-align:center;font-size:12px;font-weight:600;color:var(--text2)">Focus &amp; Breaks · medium</div>
+    <div style="position:absolute;left:452px;top:250px;width:364px;text-align:center;font-size:12px;font-weight:600;color:var(--text2)">Pomodoro · medium</div>
+    <div style="position:absolute;left:844px;top:250px;width:170px;text-align:center;font-size:12px;font-weight:600;color:var(--text2)">Pomodoro · small</div>`;
+  return { w: 1074, h: 300, html: `<div style="position:absolute;inset:0;background:var(--wall);border-radius:20px;overflow:hidden">${focusW}${pomoW}${smallW}${labels}</div>` };
+}
+
+// ---------- Architecture ----------
+function arch() {
+  const W = 1200, H = 680;
+  const item = (sym, tint, title, detail) => `<div class="row" style="gap:10px;align-items:flex-start;padding:7px 0">
+    <span style="width:26px;height:26px;border-radius:7px;background:color-mix(in srgb, ${C(tint)} 16%, transparent);color:${C(tint)};display:flex;align-items:center;justify-content:center;font-size:13px;flex:none">${sf(sym)}</span>
+    <div class="col" style="gap:1px"><span style="font-weight:600">${title}</span><span class="sec" style="font-size:12px;line-height:1.35">${detail}</span></div></div>`;
+  const layer = (sym, tint, title, detail) => `<div class="dbox" style="padding:10px 12px;flex:1"><div class="row" style="gap:7px;font-weight:600;color:${C(tint)}">${sf(sym)}<span style="color:var(--text)">${title}</span></div>
+    <div class="sec" style="font-size:11.5px;margin-top:3px;line-height:1.35">${detail}</div></div>`;
+  const html = `<div style="position:absolute;inset:0;background:var(--diag);border-radius:20px;border:.5px solid var(--diagline)">
+    <div style="position:absolute;left:36px;top:30px" class="row"><img src="apps/watchdog.png" style="width:40px;height:40px"><div class="col" style="margin-left:12px">
+      <span style="font-size:19px;font-weight:700">How WatchDog is put together</span><span class="sec">Two processes, one rule: the part you can quit is never the part that holds the line.</span></div></div>
+
+    <div style="position:absolute;left:36px;top:100px;width:420px" class="col">
+      <div class="dtitle" style="margin-bottom:8px">Your login session · runs as you</div>
+      <div class="dbox"><div class="row" style="gap:10px;margin-bottom:4px">${app("watchdog", 30)}<div class="col"><span style="font-weight:700;font-size:14px">WatchDog.app</span><span class="sec" style="font-size:11px">Menu bar, main window, widgets</span></div></div>
+        ${item("eye.fill", "indigo", "Tracker · every 2 s", "Front app, window title, browser tab address, what’s playing, idle time.")}
+        ${item("checklist", "orange", "Rule engine · every ~4 s", "Limits per sitting or in total, schedules, “Pomodoro it” break budgets.")}
+        ${item("xmark.circle.fill", "red", "Gentle enforcement", "Warns you, closes the matching tab, quits the matching app.")}
+        ${item("timer", "green", "Pomodoro timer", "Focus and break intervals that rules can follow.")}
+        ${item("doc.text", "blue", "Usage history", "SQLite in a private App Group container, readable by your account only.")}
+      </div></div>
+
+    <div style="position:absolute;left:456px;top:250px;width:288px;height:200px">
+      <svg width="288" height="200" style="position:absolute;inset:0;overflow:visible">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text2)"/></marker></defs>
+        <line x1="14" y1="62" x2="272" y2="62" stroke="var(--text2)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <line x1="272" y1="132" x2="14" y2="132" stroke="var(--text2)" stroke-width="1.5" marker-end="url(#ah)"/>
+      </svg>
+      <div style="position:absolute;left:0;right:0;top:0;text-align:center"><span class="pill" style="background:color-mix(in srgb, var(--indigo) 14%, transparent);color:var(--indigo)">${sf("lock.shield.fill")}XPC · signed &amp; owner-only</span></div>
+      <div style="position:absolute;left:0;right:0;top:74px;text-align:center;font-size:11.5px" class="sec">rule proposals · heartbeat every ~8 s<br>“start block” requests</div>
+      <div style="position:absolute;left:0;right:0;top:144px;text-align:center;font-size:11.5px" class="sec">rules in force · running block<br>pending changes · refusals</div>
+    </div>
+
+    <div style="position:absolute;left:744px;top:100px;width:420px" class="col">
+      <div class="dtitle" style="margin-bottom:8px">System · runs as root, started by launchd</div>
+      <div class="dbox"><div class="row" style="gap:10px;margin-bottom:4px"><span style="width:30px;height:30px;border-radius:8px;background:linear-gradient(180deg,#6d6bd8,#3b3a8f);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px">${sf("shield.fill")}</span>
+        <div class="col"><span style="font-weight:700;font-size:14px">WatchDogDaemon</span><span class="sec" style="font-size:11px">Starts at boot, restarted if it exits</span></div></div>
+        ${item("lock.fill", "red", "Holds the rules and the Enforcing switch", "Tightening applies at once. Loosening waits 2 hours, and is refused during a block.")}
+        ${item("hourglass", "orange", "Runs blocks on a clock you can’t change", "Counts through sleep, survives restarts, ignores the system date. 4 hours at most.")}
+        ${item("eye.slash.fill", "purple", "Watches the watcher", "No heartbeat, or a lost permission while enforcing, blocks every site your rules name.")}
+        ${item("doc.text", "gray", "Audit log", "Every attempt to loosen things, readable with sudo.")}
+      </div></div>
+
+    <div style="position:absolute;left:744px;top:490px;width:420px" class="col">
+      <div class="dtitle" style="margin-bottom:8px">Blocking layers it reconciles every 2 s</div>
+      <div class="row" style="gap:10px;align-items:stretch">
+        ${layer("network", "blue", "/etc/hosts", "Its own marked section only. Edits are reverted.")}
+        ${layer("shield.lefthalf.filled", "teal", "Firewall", "Optional pf anchor; stands down if pf is in use.")}
+        ${layer("globe", "orange", "Brave policy", "Tor windows off while enforcing.")}
+      </div></div>
+
+    <div style="position:absolute;left:36px;top:490px;width:420px" class="col">
+      <div class="dtitle" style="margin-bottom:8px">Guard rails, built into the daemon</div>
+      <div class="dbox" style="font-size:12px;line-height:1.5">
+        <div class="row" style="gap:8px">${sf("checkmark.circle.fill", "color:var(--green)")}<span>Never blocked: apple.com, icloud.com, anthropic.com, claude.ai…</span></div>
+        <div class="row" style="gap:8px">${sf("checkmark.circle.fill", "color:var(--green)")}<span>No block longer than 4 hours. No cancel button, either.</span></div>
+        <div class="row" style="gap:8px">${sf("checkmark.circle.fill", "color:var(--green)")}<span>Dry run first: rules only notify until you switch to Enforcing.</span></div>
+        <div class="row" style="gap:8px">${sf("checkmark.circle.fill", "color:var(--green)")}<span>A printed rescue sheet and an uninstaller that needs your password.</span></div>
+      </div></div>
+  </div>`;
+  return { w: W, h: H, html };
+}
+
+// ---------- Half uninstall ----------
+function uninstall() {
+  const W = 1200, H = 400;
+  const left = (sym, title, detail) => `<div class="row" style="gap:10px;align-items:flex-start;padding:6px 0">${sf(sym, "color:var(--red);font-size:15px;margin-top:1px")}
+    <div class="col" style="gap:1px"><span style="font-weight:600">${title}</span><span class="sec" style="font-size:12px;line-height:1.35">${detail}</span></div></div>`;
+  const right = (n, title, detail) => `<div class="row" style="gap:10px;align-items:flex-start;padding:6px 0"><span style="width:20px;height:20px;border-radius:10px;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">${n}</span>
+    <div class="col" style="gap:1px"><span style="font-weight:600">${title}</span><span class="sec" style="font-size:12px;line-height:1.35">${detail}</span></div></div>`;
+  const html = `<div style="position:absolute;inset:0;background:var(--diag);border-radius:20px;border:.5px solid var(--diagline)">
+    <div style="position:absolute;left:36px;top:28px;right:36px" class="row"><span style="font-size:26px;color:var(--orange)">${sf("exclamationmark.triangle.fill")}</span>
+      <div class="col" style="margin-left:12px"><span style="font-size:19px;font-weight:700">Trashing the app is not uninstalling it</span>
+      <span class="sec">The daemon leaves its block list in place when it stops. That is what makes a block hold. It is also what makes a half uninstall stick.</span></div></div>
+    <div style="position:absolute;left:36px;top:104px;width:548px;bottom:30px;border-radius:14px;border:1px solid color-mix(in srgb, var(--red) 40%, transparent);background:color-mix(in srgb, var(--red) 6%, transparent);padding:16px 18px">
+      <div class="row" style="gap:8px;font-weight:700;color:var(--red)">${sf("xmark.circle.fill")}Half uninstall</div>
+      <div class="sec" style="font-size:12px;margin:4px 0 8px">Dragging WatchDog.app to the Trash, or switching it off in Login Items</div>
+      ${left("network", "Blocked sites stay blocked", "The /etc/hosts section stays, and no daemon is left to lift it when the timer ends.")}
+      ${left("eye.slash.fill", "Do it while enforcing, and it gets worse", "If the app goes silent while the daemon still runs, it blocks every site your rules name, and those stay too.")}
+      ${left("globe", "Brave stays “Managed by your organization”", "Tor windows stay switched off.")}
+      ${left("lock.fill", "Root-owned leftovers", "State folder, owner record and the Login Items entry remain.")}
+    </div>
+    <div style="position:absolute;left:616px;top:104px;right:36px;bottom:30px;border-radius:14px;border:1px solid color-mix(in srgb, var(--green) 40%, transparent);background:color-mix(in srgb, var(--green) 6%, transparent);padding:16px 18px">
+      <div class="row" style="gap:8px;font-weight:700;color:var(--green)">${sf("checkmark.circle.fill")}Full uninstall</div>
+      <div class="sec" style="font-size:12px;margin:4px 0 8px">Undo first, then delete</div>
+      ${right(1, "Switch to Dry run and let any block finish", "Leaving Enforcing takes effect after the 2-hour wait.")}
+      ${right(2, "Settings → Uninstall WatchDog…", "Removes the daemon, rules, log, block list, login item and permissions.")}
+      ${right(3, "…or, from a terminal: sudo scripts/uninstall.sh --armed", "Works even when the app can’t run, and doesn’t ask the daemon.")}
+      ${right(4, "Then move WatchDog.app to the Trash", "And restart Brave so it drops its managed setting.")}
+    </div></div>`;
+  return { w: W, h: H, html };
+}
+
+const frames = { today, focus, rules, setup, popover, widgets, arch, uninstall };
+const f = frames[frame]();
+const root = document.getElementById("root");
+root.className = "canvas";
+root.style.width = f.w + "px";
+root.style.height = f.h + "px";
+root.innerHTML = f.html;
+document.title = `${frame}:${f.w}x${f.h}`;
+</script>
+</body>
+</html>
