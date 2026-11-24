@@ -73,6 +73,13 @@ final class Guardian: @unchecked Sendable {
             restrictStateToRoot()
             loadConfig()
             pending = load(PendingChange.self, from: pendingURL)
+            // The armed build never loosens. A change left waiting by an
+            // earlier build that still allowed it must not come due.
+            if !Limits.isDevBuild, pending != nil {
+                pending = nil
+                try? FileManager.default.removeItem(at: pendingURL)
+                audit("discarded a waiting change: the armed build does not loosen")
+            }
             if let saved = load(BlockState.self, from: stateURL), !saved.isExpired {
                 block = saved
                 audit("resumed block: \(Int(saved.remainingSeconds))s left on \(saved.domains.joined(separator: ","))")
@@ -124,7 +131,7 @@ final class Guardian: @unchecked Sendable {
     /// Reads the stored rules. A file that exists but cannot be read must not
     /// look like "no rules yet": that would let anything be proposed without
     /// delay. It is set aside, and the daemon comes up enforcing with no
-    /// rules, so getting back to dry run still takes the normal delay.
+    /// rules, so getting back to dry run is as hard as it was before.
     private func loadConfig() {
         guard FileManager.default.fileExists(atPath: configURL.path) else { return }
         if let stored = load(DaemonConfig.self, from: configURL) {
@@ -346,7 +353,9 @@ final class Guardian: @unchecked Sendable {
                 return
             }
             if config?.isEnforcing == true {
-                reply(false, "WatchDog is enforcing. Switch to dry run first; that takes effect after the delay.")
+                reply(false, Limits.isDevBuild
+                      ? "WatchDog is enforcing. Switch to dry run first; that takes effect after the delay."
+                      : "WatchDog is enforcing, and that cannot be switched off. See docs/RESCUE.md for the way out.")
                 return
             }
             audit("uninstall requested: removing hosts section, browser policy, firewall rules and state")

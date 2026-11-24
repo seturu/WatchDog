@@ -39,7 +39,10 @@ struct SettingsView: View {
 
             Section("Enforcement") {
                 LabeledContent("Mode", value: runner.isEnforcing ? "Enforcing" : "Dry run")
-                LabeledContent("Changes that loosen rules", value: "Wait \(Format.duration(Limits.coolingOffSeconds)) while enforcing")
+                LabeledContent("Changes that loosen rules", value: WD.isArmed ? "Refused while enforcing" : "Wait \(Format.duration(Limits.coolingOffSeconds)) while enforcing")
+                if WD.isArmed {
+                    LabeledContent("Back to dry run", value: "Not possible once enforcing")
+                }
                 LabeledContent("During a block", value: "Refused")
             }
 
@@ -49,7 +52,8 @@ struct SettingsView: View {
                 LabeledContent("Brave's Tor windows", value: "Disabled while enforcing")
                 Toggle("Also block by IP address (firewall)", isOn: Binding(
                     get: { runner.usesPacketFilter }, set: { runner.requestPacketFilter($0) }))
-                    .disabled(!runner.daemonReachable)
+                    // Switching a layer off is loosening.
+                    .disabled(!runner.daemonReachable || (runner.isLocked && runner.usesPacketFilter))
             } header: {
                 Text("How sites are blocked")
             } footer: {
@@ -81,7 +85,9 @@ struct SettingsView: View {
                 if let uninstallMessage { Text(uninstallMessage).foregroundStyle(.red) }
             } footer: {
                 Text(runner.isEnforcing || runner.activeBlock != nil
-                     ? "Not available while enforcing or during a block. Switch to dry run first; that takes effect after the delay."
+                     ? (runner.isLocked
+                        ? "Not available: WatchDog is enforcing, and that cannot be switched off. The way out is in docs/RESCUE.md."
+                        : "Not available while enforcing or during a block. Switch to dry run first; that takes effect after the delay.")
                      : "Removes everything WatchDog installed on this Mac.")
             }
 

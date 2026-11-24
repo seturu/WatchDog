@@ -111,9 +111,13 @@ public enum ConfigPolicy {
     /// What happens to a requested change.
     ///
     /// In dry run nothing is at stake, so everything applies at once. While
-    /// enforcing, a change that only tightens applies at once; anything else
-    /// has to wait, and is refused while a block is running.
-    public static func decide(current: DaemonConfig?, proposed: DaemonConfig, blockActive: Bool) -> Decision {
+    /// enforcing, a change that only tightens applies at once. Anything else
+    /// is refused outright by the armed build: once it enforces there is no
+    /// way back to dry run and nothing can be removed, changed or switched
+    /// off. The development build makes such a change wait instead, and
+    /// refuses it while a block is running.
+    public static func decide(current: DaemonConfig?, proposed: DaemonConfig, blockActive: Bool,
+                              armed: Bool = !Limits.isDevBuild) -> Decision {
         // Rule IDs key cooldowns and the tightening check. A second rule
         // under an enabled rule's ID would pass as "unchanged" and could keep
         // the real one quiet by refreshing their shared cooldown.
@@ -124,13 +128,19 @@ public enum ConfigPolicy {
         if current.rules == proposed.rules && current.isEnforcing == proposed.isEnforcing
             && current.packetFilterOn == proposed.packetFilterOn { return .applyNow }
         if isTightening(from: current, to: proposed) { return .applyNow }
+        if armed { return .reject(armedRefusal) }
         if blockActive { return .reject("Locked until the current block ends.") }
         return .delay
     }
 
+    /// What the armed build answers to anything that is not tightening.
+    public static let armedRefusal = "WatchDog is enforcing. Rules can gain sites, new rules can be added and "
+        + "rules that are off can be switched on. Nothing can be removed, changed or switched off."
+
     /// True if nothing that currently bites is weakened: enforcement stays on,
-    /// and every enabled rule is still there, unchanged apart from its name.
-    /// Adding rules, or switching on or editing rules that were off, is fine.
+    /// and every enabled rule is still there, unchanged apart from its name
+    /// and any sites added to it. Adding rules, or switching on or editing
+    /// rules that were off, is fine.
     public static func isTightening(from current: DaemonConfig, to proposed: DaemonConfig) -> Bool {
         guard proposed.isEnforcing else { return false }
         // Switching a blocking layer off is loosening.
@@ -139,6 +149,17 @@ public enum ConfigPolicy {
         return current.rules.filter(\.isEnabled).allSatisfy { rule in
             guard var match = proposedByID[rule.id] else { return false }
             match.name = rule.name
+            // More sites only widen what the rule catches, as long as every
+            // site it already had is still there and each new one can be
+            // blocked: a block request is refused as a whole if one of its
+            // sites is malformed or on the never-block list, so such an
+            // addition would switch the rule's blocks off.
+            let had = Set(rule.domains)
+            guard had.isSubset(of: match.domains) else { return false }
+            for added in match.domains where !had.contains(added) {
+                guard case .success(let ok) = Limits.validate(domains: [added], seconds: 1), ok.domains == [added] else { return false }
+            }
+            match.domains = rule.domains
             return match == rule
         }
     }

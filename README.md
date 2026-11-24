@@ -28,7 +28,7 @@
   </picture>
 </p>
 
-Most blockers give way the moment you want them to. A browser extension is two clicks from off. A timer is one ⌘Q from gone. WatchDog is split in two: a menu-bar app that watches and nudges, and a root daemon that keeps the rules and runs the blocks. Once you switch it to **Enforcing**, blocks can't be cancelled, relaxing a rule waits two hours, and the app won't quit.
+Most blockers give way the moment you want them to. A browser extension is two clicks from off. A timer is one ⌘Q from gone. WatchDog is split in two: a menu-bar app that watches and nudges, and a root daemon that keeps the rules and runs the blocks. Once you switch it to **Enforcing**, blocks can't be cancelled, nothing can be relaxed or switched off again, and the app won't quit.
 
 > [!CAUTION]
 > ### Never "half-uninstall" WatchDog
@@ -36,7 +36,7 @@ Most blockers give way the moment you want them to. A browser extension is two c
 >
 > When the daemon stops, it deliberately leaves its block list in `/etc/hosts` (otherwise stopping it would be an easy way to end a block). If you remove it half-way, whatever was blocked at that moment **stays blocked, with nothing left to unblock it**. Doing it while enforcing is worse: if the app stops reporting in while the daemon is still running, the daemon treats that as tampering and blocks **every site your rules name**, and those blocks stay too.
 >
-> **Always remove it properly:** switch to Dry run, wait for any block to finish, then use **Settings → Uninstall WatchDog…**, or run `sudo scripts/uninstall.sh --armed` from a terminal. Move the app to the Trash only after that. Already stuck? See [`docs/RESCUE.md`](docs/RESCUE.md) and [Uninstalling](#uninstalling).
+> **Always remove it properly:** in dry run use **Settings → Uninstall WatchDog…**; once enforcing, the only way is `sudo scripts/uninstall.sh --armed` from a terminal. Move the app to the Trash only after that. Already stuck? See [`docs/RESCUE.md`](docs/RESCUE.md) and [Uninstalling](#uninstalling).
 
 ---
 
@@ -52,7 +52,7 @@ I hope it helps anyone who needs it, neurodivergent or not.
 
 What it does is add **more friction and more incentive** than the usual options:
 
-- **Friction.** The rules belong to a root process, not to you. While enforcing, blocks have no cancel button, loosening a rule or going back to dry run waits **2 hours**, the app can't be quit, and launchd brings it back if it's killed. Getting out means a deliberate, password-protected act, not a moment of weakness.
+- **Friction.** The rules belong to a root process, not to you. While enforcing, blocks have no cancel button, there is no way back to dry run, rules that are on can only gain sites, the app can't be quit, and launchd brings it back if it's killed. Getting out means a deliberate, password-protected act, not a moment of weakness.
 - **Incentive.** With the **"Pomodoro it"** rule, distractions aren't forbidden, they're *earned*: every hour of focus earns break time you can spend on YouTube, guilt-free. Your day is laid out in plain numbers, so you can see the focus you put in.
 
 ---
@@ -172,7 +172,8 @@ About every **4 seconds** the rule engine checks your spans against each rule's 
 The daemon owns `config.json`. The app edits a draft and *proposes* it:
 
 - In dry run, changes apply at once.
-- While enforcing, a change that only **tightens** applies at once. Anything that **loosens** (including any edit to an active rule, and switching back to dry run) waits a **2-hour cooling-off period**, and is **refused while a block runs**. A pending change can be discarded. Asking again doesn't restart the wait.
+- While enforcing, a change that only **tightens** applies at once: a new rule, switching on a rule that was off, or adding sites to a rule's list. Anything that **loosens** (removing a site, any other edit to an active rule, switching a rule off, deleting it, switching back to dry run) is **refused** by the armed build. Armed is armed: the only way out is the uninstall script.
+- The development build makes a loosening change wait 2 minutes instead, and refuses it while a block runs, so the mechanism can be tried safely.
 - Rule sets with duplicate IDs are refused, and refused input is escaped before it's logged.
 
 ### 5. Blocking layers
@@ -263,7 +264,7 @@ Prefer Xcode? Run `xcodegen generate`, open `WatchDog.xcodeproj`, and build and 
 
 ### Step 2: the armed build
 
-The Release build is the real thing: 4-hour blocks, any site except the never-block list, a 2-hour cooling-off period, and no self-reset. **Print [`docs/RESCUE.md`](docs/RESCUE.md) first.**
+The Release build is the real thing: 4-hour blocks, any site except the never-block list, no way back to dry run once enforcing, and no self-reset. **Print [`docs/RESCUE.md`](docs/RESCUE.md) first.**
 
 ```bash
 scripts/build.sh --armed
@@ -289,7 +290,7 @@ The installer puts a root-owned copy in `/Applications`, verifies the signatures
   </picture>
 </p>
 
-**From the app** (dry run, no block running): **Settings → Uninstall WatchDog…** removes the daemon, its rules and log, any block list it wrote, the login agent and WatchDog's privacy permissions. You choose whether to keep your usage history. Then move the app to the Trash.
+**From the app** (dry run only, so not once the armed build is enforcing; no block running): **Settings → Uninstall WatchDog…** removes the daemon, its rules and log, any block list it wrote, the login agent and WatchDog's privacy permissions. You choose whether to keep your usage history. Then move the app to the Trash.
 
 **From a terminal** (works even if the app can't run, and doesn't ask the daemon's permission):
 

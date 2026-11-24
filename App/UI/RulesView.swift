@@ -23,8 +23,8 @@ struct RulesView: View {
                 Button("New Rule", systemImage: "plus", action: add)
                     .help("Add a rule")
                 Button("Delete Rule", systemImage: "trash", action: removeSelected)
-                    .disabled(selection == nil)
-                    .help("Delete the selected rule")
+                    .disabled(selection == nil || selectedIsLocked)
+                    .help(selectedIsLocked ? "A rule that is on cannot be deleted while enforcing" : "Delete the selected rule")
             }
             ModeSwitch(runner: runner)
         }
@@ -39,7 +39,9 @@ struct RulesView: View {
         HStack(spacing: 0) {
             List(selection: $selection) {
                 ForEach($runner.rules) { $rule in
-                    RuleRow(rule: $rule, status: statusLine(rule)).tag(rule.id)
+                    RuleRow(rule: $rule, status: statusLine(rule),
+                            locked: runner.isLocked(rule), confirmsSwitchingOn: runner.isLocked)
+                        .tag(rule.id)
                 }
             }
             .listStyle(.inset)
@@ -63,6 +65,10 @@ struct RulesView: View {
         }
     }
 
+    private var selectedIsLocked: Bool {
+        runner.rules.first { $0.id == selection }.map(runner.isLocked) ?? false
+    }
+
     private func statusLine(_ rule: Rule) -> String {
         guard rule.isEnabled else { return "Off" }
         guard rule.schedule.contains(Date()) else { return "Outside its hours" }
@@ -80,6 +86,7 @@ struct RulesView: View {
     }
 
     private func removeSelected() {
+        guard !selectedIsLocked else { return }
         runner.rules.removeAll { $0.id == selection }
         selection = runner.rules.first?.id
     }
@@ -88,6 +95,12 @@ struct RulesView: View {
 private struct RuleRow: View {
     @Binding var rule: Rule
     let status: String
+    /// In force while armed: it cannot be switched off.
+    let locked: Bool
+    /// Armed and enforcing: switching a rule on locks it, so ask first.
+    let confirmsSwitchingOn: Bool
+
+    @State private var confirming = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -102,10 +115,20 @@ private struct RuleRow: View {
                 Text(status).font(.caption).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
             }
             Spacer(minLength: 4)
-            Toggle("Enabled", isOn: $rule.isEnabled)
+            Toggle("Enabled", isOn: Binding(get: { rule.isEnabled }, set: { on in
+                if on && confirmsSwitchingOn { confirming = true } else { rule.isEnabled = on }
+            }))
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.mini)
+                .disabled(locked)
+                .help(locked ? "A rule that is on cannot be switched off while enforcing" : "")
+                .confirmationDialog("Switch this rule on for good?", isPresented: $confirming) {
+                    Button("Switch On") { rule.isEnabled = true }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("WatchDog is enforcing. Once this rule is on it cannot be changed, switched off or deleted. You can only add sites to it.")
+                }
         }
         .padding(.vertical, 4)
     }
@@ -116,8 +139,10 @@ private struct RuleEditor: View {
     let runner: RuleRunner
     let recentApps: [UsageTotal]
 
+    // Sites are a list: one is added at a time, from this field.
+    @State private var newSite = ""
+    @State private var siteError: String?
     // Free text while typing; parsed into the rule's lists on every change.
-    @State private var sites = ""
     @State private var apps = ""
     @State private var keywords = ""
 
@@ -133,13 +158,49 @@ private struct RuleEditor: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     liveStatus
+                    if locked {
+                        Label("In force. While enforcing you can only add sites to this rule.", systemImage: "lock.fill")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.vertical, 2)
             }
 
             Section("Applies to any of") {
-                TextField("Sites", text: $sites, prompt: Text("youtube.com, reddit.com"))
-                    .onChange(of: sites) { rule.domains = Self.parse(sites).map { $0.lowercased() } }
+                LabeledContent("Sites") {
+                    VStack(alignment: .trailing, spacing: 6) {
+                        if rule.domains.isEmpty {
+                            Text("None").foregroundStyle(.tertiary)
+                        }
+                        ForEach(rule.domains, id: \.self) { domain in
+                            HStack(spacing: 6) {
+                                SiteIcon(domain: domain, size: 16)
+                                Text(domain)
+                                if locked {
+                                    Image(systemName: "lock.fill").font(.caption).foregroundStyle(.tertiary)
+                                        .help("Sites cannot be removed while enforcing")
+                                } else {
+                                    Button("Remove", systemImage: "xmark.circle.fill") {
+                                        rule.domains.removeAll { $0 == domain }
+                                    }
+                                    .labelStyle(.iconOnly).buttonStyle(.plain).foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
+                        HStack(spacing: 6) {
+                            TextField("Add a site", text: $newSite, prompt: Text("youtube.com"))
+                                .labelsHidden()
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 200)
+                                .onSubmit(addSites)
+                            Button("Add", action: addSites)
+                                .disabled(newSite.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                        if let siteError {
+                            Text(siteError).font(.caption).foregroundStyle(.red)
+                        }
+                    }
+                }
                 LabeledContent("Apps") {
                     VStack(alignment: .trailing, spacing: 6) {
                         if rule.apps.isEmpty {
@@ -165,8 +226,10 @@ private struct RuleEditor: View {
                     }
                 }
                 .onChange(of: apps) { rule.apps = Self.parse(apps) }
+                .disabled(locked)
                 TextField("Window title contains", text: $keywords, prompt: Text("netflix, twitch"))
                     .onChange(of: keywords) { rule.titleKeywords = Self.parse(keywords) }
+                    .disabled(locked)
             }
 
             Section("When") {
@@ -206,6 +269,7 @@ private struct RuleEditor: View {
                     }
                 }
             }
+            .disabled(locked)
 
             Section("Limit") {
                 Picker("Count time", selection: $rule.mode) {
@@ -228,6 +292,7 @@ private struct RuleEditor: View {
                     }
                 }
             }
+            .disabled(locked)
 
             Section("Then") {
                 Picker("Response", selection: $rule.action) {
@@ -240,10 +305,10 @@ private struct RuleEditor: View {
                 }
                 Stepper("Then stay quiet for \(rule.cooldownSeconds / 60) min", value: minutes(\.cooldownSeconds), in: 1...120)
             }
+            .disabled(locked)
         }
         .formStyle(.grouped)
         .onAppear {
-            sites = rule.domains.joined(separator: ", ")
             apps = rule.apps.joined(separator: ", ")
             keywords = rule.titleKeywords.joined(separator: ", ")
         }
@@ -284,6 +349,38 @@ private struct RuleEditor: View {
     /// The rule's pomodoro numbers, falling back to the classic rhythm.
     private var pomodoro: Binding<PomodoroSettings> {
         Binding(get: { rule.pomodoro ?? .classic }, set: { rule.pomodoro = $0 })
+    }
+
+    /// In force in the armed build: everything but adding sites is closed.
+    private var locked: Bool { runner.isLocked(rule) }
+
+    /// Adds what is in the field: one site, or several separated by commas or
+    /// spaces. Anything that is not a site name stays in the field.
+    private func addSites() {
+        var refused: [String] = []
+        for entry in newSite.split(whereSeparator: { $0 == "," || $0.isWhitespace }) {
+            let site = Self.siteName(String(entry))
+            guard !site.isEmpty, !rule.domains.contains(site) else { continue }
+            // A locked rule only takes sites the daemon will accept as tightening.
+            if case .success = Limits.validate(domains: [site], seconds: 1, allowed: nil,
+                                               never: locked ? Limits.neverBlock : [], maxSeconds: 1) {
+                rule.domains.append(site)
+            } else {
+                refused.append(site)
+            }
+        }
+        newSite = refused.joined(separator: ", ")
+        siteError = refused.isEmpty ? nil
+            : "\(locked ? "Cannot be blocked" : "Not a site name"): \(refused.joined(separator: ", "))"
+    }
+
+    /// "https://www.YouTube.com/watch?v=1" becomes "youtube.com".
+    private static func siteName(_ text: String) -> String {
+        var site = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if let scheme = site.range(of: "://") { site = String(site[scheme.upperBound...]) }
+        if let end = site.firstIndex(where: { "/?#".contains($0) }) { site = String(site[..<end]) }
+        if site.hasPrefix("www.") { site.removeFirst(4) }
+        return site
     }
 
     private static func parse(_ text: String) -> [String] {

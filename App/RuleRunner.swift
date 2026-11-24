@@ -39,6 +39,13 @@ final class RuleRunner {
     var isEnforcing: Bool { effective.isEnforcing }
     /// The firewall layer as it will be once any pending change lands.
     var usesPacketFilter: Bool { (pending?.config ?? effective).packetFilterOn }
+    /// The armed build, enforcing: from here nothing loosens. There is no way
+    /// back to dry run, and active rules can only gain sites.
+    var isLocked: Bool { WD.isArmed && effective.isEnforcing }
+    /// True for a rule that is in force and therefore can only gain sites.
+    func isLocked(_ rule: Rule) -> Bool {
+        isLocked && effective.rules.contains { $0.id == rule.id && $0.isEnabled }
+    }
     /// True when enforcement is on but a switch back to dry run is counting down.
     var isEndingEnforcement: Bool { effective.isEnforcing && pending?.config.isEnforcing == false }
 

@@ -8,8 +8,9 @@
 # READ THIS BEFORE RUNNING. The armed build is the real thing:
 #   - Blocks can last up to 4 hours and cannot be cancelled.
 #   - Any site can be blocked, except the short never-block list.
-#   - While enforcing, relaxing a rule or returning to dry run takes 2 hours,
-#     and WatchDog cannot be quit.
+#   - Enforcing cannot be switched off again. Rules that are on cannot be
+#     removed, changed or switched off; you can only add sites and rules.
+#     WatchDog cannot be quit.
 #   - There is no 15-minute self-reset as in the development build.
 # The way out is scripts/uninstall.sh --armed (see docs/RESCUE.md). Print that
 # page before you switch enforcement on.
@@ -105,11 +106,26 @@ trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
 ditto -X --noacl "$src" "$app"
-# Both shipping layouts contain plain files and directories only. Reject links
-# and special files before any recursive ownership change or signature check.
-unexpected=$(find -P "$app" ! -type f ! -type d -print -quit)
-[ -z "$unexpected" ] || die "Unexpected link or special file in staged app."
-chown -R root:wheel "$app"
+# Both shipping layouts contain plain files and directories, plus the standard
+# version links of an embedded framework (SQLCipher). Reject every other link
+# and all special files before any recursive ownership change or signature check.
+unexpected=$(find -P "$app" ! -type f ! -type d ! -type l -print -quit)
+[ -z "$unexpected" ] || die "Unexpected special file in staged app."
+while IFS= read -r -d '' link; do
+    inside=${link#"$app"/}
+    target=$(readlink "$link")
+    # Versions/Current -> A, and top-level names -> Versions/Current/<same name>.
+    if [[ "$inside" =~ ^Contents/Frameworks/[^/]+\.framework/Versions/Current$ ]] &&
+       [[ "$target" =~ ^[A-Za-z0-9]+$ ]]; then
+        continue
+    fi
+    if [[ "$inside" =~ ^Contents/Frameworks/[^/]+\.framework/([^/]+)$ ]] &&
+       [ "$target" = "Versions/Current/${BASH_REMATCH[1]}" ]; then
+        continue
+    fi
+    die "Unexpected link in staged app: $inside"
+done < <(find -P "$app" -type l -print0)
+chown -Rh root:wheel "$app"
 chmod -RN "$app"
 chmod -R a-s,a-t,u+rwX,go+rX,go-w "$app"
 

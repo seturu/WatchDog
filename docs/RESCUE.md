@@ -10,8 +10,8 @@ so this page should not live only on the Mac.
 |---|---|
 | A block is running | Its timer runs out (4 hours at most). A restart does not shorten it; sleep counts as time passing. |
 | "Blocked because WatchDog could not watch" | WatchDog is running again with its permissions (Accessibility, and Automation for your browser). Open WatchDog, then Sidebar > Setup. |
-| A change is waiting | 2 hours after you asked for it. Asking again for the same thing does not restart the wait. |
-| WatchDog will not quit | Enforcement is on. Switch to dry run in the toolbar; it takes effect after the wait. Logging out, restarting and shutting down always work. |
+| A change was refused | Never. Once enforcing, rules that are on cannot be removed, changed or switched off; you can only add sites and rules. |
+| WatchDog will not quit | Enforcement is on, and it cannot be switched off again. Logging out, restarting and shutting down always work. The only way out is the uninstall below. |
 
 Never blocked, whatever a rule says: apple.com, icloud.com, cdn-apple.com,
 mzstatic.com, anthropic.com, claude.ai.

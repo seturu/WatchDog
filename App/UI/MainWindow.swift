@@ -130,7 +130,7 @@ struct ModeSwitch: ToolbarContent {
     var body: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             Button {
-                if runner.isEnforcing { stopping = true } else { confirming = true }
+                if !runner.isEnforcing { confirming = true } else if !runner.isLocked { stopping = true }
             } label: {
                 Label(runner.isEndingEnforcement ? "Enforcing, ending soon" : runner.isEnforcing ? "Enforcing" : "Dry run",
                       systemImage: runner.isEnforcing ? "shield.lefthalf.filled" : "testtube.2")
@@ -138,7 +138,10 @@ struct ModeSwitch: ToolbarContent {
                     .foregroundStyle(runner.isEnforcing ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             }
             .disabled(!runner.daemonReachable)
+            // Armed and enforcing, the switch is only a sign: it does nothing.
+            .allowsHitTesting(!runner.isLocked)
             .help(!runner.daemonReachable ? "The background service is not reachable, so rules run as a dry run."
+                  : runner.isLocked ? "Enforcing. This cannot be switched off."
                   : runner.isEnforcing ? "Rules close tabs and apps and start blocks."
                   : "Rules only notify and log. Click to start enforcing.")
             .confirmationDialog("Start enforcing rules?", isPresented: $confirming) {
@@ -147,8 +150,12 @@ struct ModeSwitch: ToolbarContent {
             } message: {
                 Text("Rules set to “Close it” will close matching browser tabs and quit matching apps. "
                      + "Rules set to “Block it” will start a timed block that cannot be cancelled. "
-                     + "Once enforcing, switching back or relaxing a rule only takes effect after "
-                     + "\(Format.duration(Limits.coolingOffSeconds)), and WatchDog cannot be quit.")
+                     + (WD.isArmed
+                        ? "This cannot be undone. There is no way back to dry run, and the rules that are on "
+                          + "can no longer be removed, changed or switched off: you can only add sites and rules. "
+                          + "WatchDog cannot be quit."
+                        : "Once enforcing, switching back or relaxing a rule only takes effect after "
+                          + "\(Format.duration(Limits.coolingOffSeconds)), and WatchDog cannot be quit."))
             }
             .confirmationDialog("Go back to dry run?", isPresented: $stopping) {
                 Button("Switch to Dry Run After the Delay") { runner.requestEnforcing(false) }
