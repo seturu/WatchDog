@@ -10,6 +10,8 @@ struct FocusView: View {
     let tracker: Tracker
     let rules: RuleRunner
 
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
     @State private var editing: FocusSession?
 
     var body: some View {
@@ -35,7 +37,16 @@ struct FocusView: View {
         }
         .navigationTitle("Focus")
         .navigationSubtitle(pomodoro.usesBuiltIn ? "Built-in timer" : "Following \(pomodoro.externalApp?.name ?? "an external timer")")
-        .toolbar { ModeSwitch(runner: rules) }
+        .toolbar {
+            ToolbarItem {
+                Button("Compact Timer", systemImage: "arrow.down.right.and.arrow.up.left") {
+                    openWindow(id: CompactTimerView.windowID)
+                    dismissWindow(id: "main")
+                }
+                .help("Shrink to a small timer that floats above other windows")
+            }
+            ModeSwitch(runner: rules)
+        }
         .sheet(item: $editing) { session in
             SessionEditor(timer: pomodoro, session: session)
         }

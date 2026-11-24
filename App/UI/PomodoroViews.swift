@@ -41,6 +41,8 @@ struct PomodoroControls: View {
     let timer: PomodoroTimer
     /// Glass buttons, with skip and stop as icons.
     var inPopover = false
+    /// The compact window: ordinary buttons, but as narrow as the popover's.
+    var compact = false
 
     var body: some View {
         let machine = timer.machine
@@ -59,7 +61,7 @@ struct PomodoroControls: View {
                 skipAndStop(machine)
             }
         }
-        .controlSize(inPopover ? .regular : .large)
+        .controlSize(inPopover || compact ? .regular : .large)
     }
 
     @ViewBuilder private func skipAndStop(_ machine: PomodoroMachine) -> some View {
@@ -72,7 +74,7 @@ struct PomodoroControls: View {
 
     @ViewBuilder private func primary(_ title: String, _ symbol: String, action: @escaping @MainActor () -> Void) -> some View {
         let button = Button(action: action) {
-            Label(title, systemImage: symbol).frame(maxWidth: inPopover ? .infinity : nil)
+            Label(title, systemImage: symbol).frame(maxWidth: inPopover || compact ? .infinity : nil)
         }
         if inPopover { button.buttonStyle(.glassProminent) } else { button.buttonStyle(.borderedProminent) }
     }
@@ -83,6 +85,11 @@ struct PomodoroControls: View {
             Button(title, systemImage: symbol, action: action)
                 .labelStyle(.iconOnly)
                 .buttonStyle(.glass)
+                .help(help)
+        } else if compact {
+            Button(title, systemImage: symbol, action: action)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
                 .help(help)
         } else {
             Button(title, systemImage: symbol, action: action)

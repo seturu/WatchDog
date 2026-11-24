@@ -61,10 +61,8 @@ struct MainWindow: View {
             }
         }
         .frame(minWidth: 860, minHeight: 600)
-        // A menu-bar app has no Dock icon. While this window is open, behave
-        // like a regular app (Dock icon, Cmd-Tab), then go back to menu-bar only.
-        .onAppear { NSApp.setActivationPolicy(.regular) }
-        .onDisappear { NSApp.setActivationPolicy(.accessory) }
+        .onAppear { DockPresence.enter() }
+        .onDisappear { DockPresence.leave() }
     }
 
     private func badge(for item: Pane) -> Int {
@@ -78,6 +76,24 @@ struct MainWindow: View {
     private var todaysVerdicts: Int {
         let start = Calendar.current.startOfDay(for: Date())
         return rules.verdicts.filter { $0.at >= start }.count
+    }
+}
+
+/// A menu-bar app has no Dock icon. While one of its windows is open, behave
+/// like a regular app (Dock icon, Cmd-Tab), then go back to menu-bar only.
+/// Counted, because switching between the main and the compact window opens
+/// one as the other closes, in no guaranteed order.
+@MainActor enum DockPresence {
+    private static var windows = 0
+
+    static func enter() {
+        windows += 1
+        NSApp.setActivationPolicy(.regular)
+    }
+
+    static func leave() {
+        windows = max(0, windows - 1)
+        if windows == 0 { NSApp.setActivationPolicy(.accessory) }
     }
 }
 

@@ -29,6 +29,19 @@ struct WatchDogApp: App {
             }
         }
         .defaultSize(width: 1040, height: 760)
+
+        // The compact layout: only the pomodoro timer, sized to its content
+        // and kept above other windows.
+        Window("Focus", id: CompactTimerView.windowID) {
+            if let tracker = AppState.shared.tracker, let pomodoro = AppState.shared.pomodoro {
+                CompactTimerView(pomodoro: pomodoro, tracker: tracker)
+            } else {
+                Text(AppState.shared.startupError ?? "Tracking is unavailable.").padding()
+            }
+        }
+        .windowResizability(.contentSize)
+        .windowLevel(.floating)
+        .defaultPosition(.topTrailing)
     }
 }
 
